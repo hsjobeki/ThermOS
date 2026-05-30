@@ -18,12 +18,12 @@
       default = "0444";
     };
     uid = {
-      type = types.str;
-      default = "0";
+      type = types.int;
+      default = 0;
     };
     gid = {
-      type = types.str;
-      default = "0";
+      type = types.int;
+      default = 0;
     };
   };
 
