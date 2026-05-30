@@ -2,7 +2,7 @@
 { nixpkgs, adios }:
 {
   system ? builtins.currentSystem,
-  ...
+  options ? { },
 }:
 let
   pkgs = nixpkgs { inherit system; };
@@ -50,7 +50,7 @@ let
     };
   };
 
-  evaluated = tree { };
+  evaluated = tree { inherit options; };
 in
 {
   inherit

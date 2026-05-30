@@ -12,6 +12,16 @@ let
   groupsContract = (import ../modules/contracts/groups.nix { inherit types; }).contract;
 
   ev = thermos.evaluated;
+
+  inherit (builtins)
+    all
+    attrNames
+    filter
+    hasAttr
+    head
+    length
+    match
+    ;
 in
 {
   # contract merge
@@ -97,7 +107,7 @@ in
 
     packages = {
       testMergeConcatenates = {
-        expr = builtins.length (
+        expr = length (
           packagesContract.merge {
             a = [
               { package = "x"; }
@@ -485,7 +495,7 @@ in
 
       testMergePreservesMembers = {
         expr =
-          (builtins.head (
+          (head (
             groupsContract.merge {
               a = [
                 {
@@ -511,7 +521,7 @@ in
 
   tree = {
     testTopLevelModules = {
-      expr = builtins.sort builtins.lessThan (builtins.attrNames ev.modules);
+      expr = attrNames ev.modules;
       expected = [
         "builders"
         "contracts"
@@ -522,7 +532,7 @@ in
     };
 
     testContractChildren = {
-      expr = builtins.sort builtins.lessThan (builtins.attrNames ev.modules.contracts.modules);
+      expr = attrNames ev.modules.contracts.modules;
       expected = [
         "assertions"
         "etc"
@@ -535,7 +545,7 @@ in
     };
 
     testBuilderChildren = {
-      expr = builtins.sort builtins.lessThan (builtins.attrNames ev.modules.builders.modules);
+      expr = attrNames ev.modules.builders.modules;
       expected = [
         "etc"
         "packages"
@@ -548,12 +558,12 @@ in
     };
 
     testCoreChildren = {
-      expr = builtins.attrNames ev.modules.core.modules;
+      expr = attrNames ev.modules.core.modules;
       expected = [ "base" ];
     };
 
     testServiceChildren = {
-      expr = builtins.attrNames ev.modules.services.modules;
+      expr = attrNames ev.modules.services.modules;
       expected = [ "getty" ];
     };
   };
@@ -628,9 +638,9 @@ in
       expr =
         let
           impl = (ev.modules.services.modules.getty { });
-          unit = builtins.head impl.units;
+          unit = head impl.units;
         in
-        builtins.sort builtins.lessThan (builtins.attrNames unit.unitConfig);
+        attrNames unit.unitConfig;
       expected = [
         "Install"
         "Service"
@@ -642,9 +652,9 @@ in
       expr =
         let
           impl = (ev.modules.services.modules.getty { });
-          unit = builtins.head impl.units;
+          unit = head impl.units;
         in
-        builtins.match ".*agetty.*" unit.unitConfig.Service.ExecStart != null;
+        match ".*agetty.*" unit.unitConfig.Service.ExecStart != null;
       expected = true;
     };
 
@@ -652,9 +662,9 @@ in
       expr =
         let
           impl = (ev.modules.services.modules.getty { });
-          unit = builtins.head impl.units;
+          unit = head impl.units;
         in
-        builtins.match ".*--autologin.*" unit.unitConfig.Service.ExecStart != null;
+        match ".*--autologin.*" unit.unitConfig.Service.ExecStart != null;
       expected = false;
     };
 
@@ -662,7 +672,7 @@ in
       expr =
         let
           impl = (ev.modules.services.modules.getty { });
-          unit = builtins.head impl.units;
+          unit = head impl.units;
         in
         unit.unitConfig.Install.WantedBy;
       expected = [ "multi-user.target" ];
@@ -676,9 +686,9 @@ in
       expr =
         let
           impl = (ev.modules.services.modules.getty { autologinUser = "root"; });
-          unit = builtins.head impl.units;
+          unit = head impl.units;
         in
-        builtins.match ".*--autologin root.*" unit.unitConfig.Service.ExecStart != null;
+        match ".*--autologin root.*" unit.unitConfig.Service.ExecStart != null;
       expected = true;
     };
 
@@ -712,9 +722,9 @@ in
               baudRate = "9600";
             }
           );
-          unit = builtins.head (builtins.filter (u: u.unitName == "serial-getty@ttyS0.service") impl.units);
+          unit = head (filter (u: u.unitName == "serial-getty@ttyS0.service") impl.units);
         in
-        builtins.match ".*--keep-baud ttyS0 9600.*" unit.unitConfig.Service.ExecStart != null;
+        match ".*--keep-baud ttyS0 9600.*" unit.unitConfig.Service.ExecStart != null;
       expected = true;
     };
 
@@ -731,9 +741,7 @@ in
             }
           );
         in
-        builtins.all (
-          u: builtins.match ".*--autologin admin.*" u.unitConfig.Service.ExecStart != null
-        ) impl.units;
+        all (u: match ".*--autologin admin.*" u.unitConfig.Service.ExecStart != null) impl.units;
       expected = true;
     };
 
@@ -741,7 +749,7 @@ in
       expr =
         let
           impl = (ev.modules.core.modules.base { hostName = "myhost"; });
-          hostnameEntry = builtins.head (builtins.filter (e: e.name == "hostname") impl.etc);
+          hostnameEntry = head (filter (e: e.name == "hostname") impl.etc);
         in
         hostnameEntry.text;
       expected = "myhost";
@@ -763,7 +771,7 @@ in
           gettyUnits = (ev.modules.services.modules.getty { }).units;
           merged = unitsContract.merge { getty = gettyUnits; };
         in
-        builtins.hasAttr "getty@tty1.service" merged;
+        hasAttr "getty@tty1.service" merged;
       expected = true;
     };
 
@@ -773,7 +781,7 @@ in
           gettyUnits = (ev.modules.services.modules.getty { }).units;
           merged = unitsContract.merge { getty = gettyUnits; };
         in
-        builtins.hasAttr "Service" merged."getty@tty1.service";
+        hasAttr "Service" merged."getty@tty1.service";
       expected = true;
     };
   };
@@ -795,6 +803,55 @@ in
         in
         lib.concatMapStringsSep "\n" (a: "Assertion failed: ${a.message}") failed;
       expected = "Assertion failed: disk too small";
+    };
+  };
+
+  # entrypoint options passthrough
+
+  entrypoint = {
+    testOptionsPassthroughGettyAutologin = {
+      expr =
+        let
+          configured = (import ../default.nix) {
+            options = {
+              "/services/getty" = {
+                autologinUser = "testuser";
+              };
+            };
+          };
+          getty = (configured.evaluated.modules.services.modules.getty { });
+          unit = head getty.units;
+        in
+        match ".*--autologin testuser.*" unit.unitConfig.Service.ExecStart != null;
+      expected = true;
+    };
+
+    testOptionsPassthroughHostname = {
+      expr =
+        let
+          configured = (import ../default.nix) {
+            options = {
+              "/core/base" = {
+                hostName = "customhost";
+              };
+            };
+          };
+          base = (configured.evaluated.modules.core.modules.base { });
+          entry = head (filter (e: e.name == "hostname") base.etc);
+        in
+        entry.text;
+      expected = "customhost";
+    };
+
+    testEmptyOptionsPreservesDefaults = {
+      expr =
+        let
+          configured = (import ../default.nix) { };
+          base = (configured.evaluated.modules.core.modules.base { });
+          entry = head (filter (e: e.name == "hostname") base.etc);
+        in
+        entry.text;
+      expected = "thermos";
     };
   };
 }
