@@ -1,9 +1,9 @@
 # /contracts/units
 #
-# Publishers provide { "unit-name.service" = { Unit = {...}; Service = {...}; }; }
-# Merge strategy: deep merge. Later publishers override specific fields,
-# like systemd drop-ins. This lets a service module define a unit and a
-# hardening module overlay ProtectSystem=strict without knowing about each other.
+# Publishers provide [{ unitName, unitConfig }] records.
+# Merge strategy: deep merge by unit name. The merge output is an attrset
+# keyed by unit name, not a list. This is intentional: subscribers look up
+# and overlay units by name, like systemd drop-ins.
 { types, ... }:
 {
   name = "units";
@@ -22,27 +22,9 @@
       publishers:
       let
         all = builtins.concatLists (builtins.attrValues publishers);
-        # Deep-merge units by name: later entries override earlier fields
-        merged = builtins.foldl' (
-          acc: entry:
-          acc
-          // {
-            ${entry.unitName} =
-              let
-                prev = acc.${entry.unitName} or { };
-                sections = builtins.attrNames entry.unitConfig;
-              in
-              builtins.foldl' (
-                a: section:
-                a
-                // {
-                  ${section} = (a.${section} or { }) // entry.unitConfig.${section};
-                }
-              ) prev sections;
-          }
-        ) { } all;
+        asAttrs = map (e: { ${e.unitName} = e.unitConfig; }) all;
       in
-      merged;
+      builtins.zipAttrsWith (_: builtins.zipAttrsWith (_: builtins.foldl' (a: b: a // b) { })) asAttrs;
   };
 
   impl = { options, ... }: options;
