@@ -669,6 +669,85 @@ in
     };
   };
 
+  # options overrides
+
+  options = {
+    testGettyAutologin = {
+      expr =
+        let
+          impl = (ev.modules.services.modules.getty { autologinUser = "root"; });
+          unit = builtins.head impl.units;
+        in
+        builtins.match ".*--autologin root.*" unit.unitConfig.Service.ExecStart != null;
+      expected = true;
+    };
+
+    testGettyMultipleTtys = {
+      expr =
+        let
+          impl = (
+            ev.modules.services.modules.getty {
+              ttys = [
+                "tty1"
+                "tty2"
+                "tty3"
+              ];
+            }
+          );
+        in
+        map (u: u.unitName) impl.units;
+      expected = [
+        "getty@tty1.service"
+        "getty@tty2.service"
+        "getty@tty3.service"
+      ];
+    };
+
+    testGettySerialTty = {
+      expr =
+        let
+          impl = (
+            ev.modules.services.modules.getty {
+              serialTtys = [ "ttyS0" ];
+              baudRate = "9600";
+            }
+          );
+          unit = builtins.head (builtins.filter (u: u.unitName == "serial-getty@ttyS0.service") impl.units);
+        in
+        builtins.match ".*--keep-baud ttyS0 9600.*" unit.unitConfig.Service.ExecStart != null;
+      expected = true;
+    };
+
+    testGettyAutologinWithMultipleTtys = {
+      expr =
+        let
+          impl = (
+            ev.modules.services.modules.getty {
+              ttys = [
+                "tty1"
+                "tty2"
+              ];
+              autologinUser = "admin";
+            }
+          );
+        in
+        builtins.all (
+          u: builtins.match ".*--autologin admin.*" u.unitConfig.Service.ExecStart != null
+        ) impl.units;
+      expected = true;
+    };
+
+    testBaseCustomHostname = {
+      expr =
+        let
+          impl = (ev.modules.core.modules.base { hostName = "myhost"; });
+          hostnameEntry = builtins.head (builtins.filter (e: e.name == "hostname") impl.etc);
+        in
+        hostnameEntry.text;
+      expected = "myhost";
+    };
+  };
+
   # units pipeline
 
   pipeline = {
