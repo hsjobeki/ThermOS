@@ -1,0 +1,40 @@
+{
+  "deps": {
+    "": {
+      "adios": "/adios",
+      "nixpkgs": "/nixpkgs"
+    }
+  },
+  "sources": {
+    "/adios": {
+      "args": {
+        "owner": "hsjobeki",
+        "ref": "pubsub",
+        "repo": "adios",
+        "type": "github"
+      },
+      "locked": {
+        "lastModified": 1772025357,
+        "lastModifiedDate": "20260225131557",
+        "narHash": "sha256-5VEcnzlztKiarsTGwQfhMHW9KrUakrbEB0WsbOI1dds=",
+        "rev": "b79c1f41fe479f6296b4e53fdf0cccd96012686d",
+        "shortRev": "b79c1f4"
+      }
+    },
+    "/nixpkgs": {
+      "args": {
+        "owner": "nixos",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      },
+      "locked": {
+        "lastModified": 1779560665,
+        "lastModifiedDate": "20260523182425",
+        "narHash": "sha256-tpyBcxPpcQb8ukyNF7DoCwfSY3VPsxHoYwj00Cayv5o=",
+        "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+        "shortRev": "64c08a7"
+      }
+    }
+  }
+}
