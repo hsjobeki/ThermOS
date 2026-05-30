@@ -140,38 +140,43 @@ in
 
       host.succeed("cp -a ${rootfsDrv} /rootfs && chmod -R u+w /rootfs")
       host.succeed("sed -i 's|^root:!:|root:${passwordHash}:|' /rootfs/etc/shadow")
-      # shadow must be root:root
       host.succeed("chown root:root /rootfs/etc/shadow && chmod 0640 /rootfs/etc/shadow")
 
-      # nspawn without --boot has no PATH
-      result = host.succeed(
-          "systemd-nspawn --quiet -D /rootfs --bind-ro=/nix/store"
-          " --setenv=PATH=/bin:/usr/bin"
-          " /bin/cat /etc/shadow"
-      )
-      assert "root:" in result, f"shadow not readable: {result}"
+      # expect script: spawn nspawn, log in as root, verify shell works
+      host.succeed("""cat > /tmp/login.exp << 'EXPECT'
+      set timeout 120
+      spawn systemd-nspawn --boot -D /rootfs --bind-ro=/nix/store --register=no
+      expect {
+          "login:" {}
+          timeout { puts "FAIL: no login prompt"; exit 1 }
+      }
+      send "root\r"
+      expect {
+          "Password:" {}
+          timeout { puts "FAIL: no password prompt"; exit 1 }
+      }
+      send "thermostest\r"
+      expect {
+          -re {#\s*$} {}
+          timeout { puts "FAIL: no shell prompt after auth"; exit 1 }
+      }
+      send "whoami\r"
+      expect {
+          "root" {}
+          timeout { puts "FAIL: whoami did not return root"; exit 1 }
+      }
+      send "echo AUTH_SUCCESS\r"
+      expect {
+          "AUTH_SUCCESS" { puts "PAM auth ok" }
+          timeout { puts "FAIL: echo marker not received"; exit 1 }
+      }
+      send "poweroff\r"
+      expect eof
+      EXPECT
+      """)
 
-      host.succeed(
-          "systemd-nspawn --boot -D /rootfs --bind-ro=/nix/store"
-          " --register=no --quiet &>/tmp/nspawn.log &"
-          " echo $! > /tmp/nspawn.pid"
-      )
-
-      import time
-      for _ in range(60):
-          time.sleep(1)
-          _, out = host.execute("cat /tmp/nspawn.log")
-          if "login:" in out:
-              break
-      else:
-          host.succeed("cat /tmp/nspawn.log >&2")
-          raise Exception("no login prompt within 60s")
-
-      boot_log = host.succeed("cat /tmp/nspawn.log")
-      assert "Welcome to ThermOS" in boot_log, f"Missing banner:\n{boot_log}"
-      assert "login:" in boot_log, f"No login prompt:\n{boot_log}"
-
-      host.execute("kill $(cat /tmp/nspawn.pid) 2>/dev/null; true")
+      result = host.succeed("expect /tmp/login.exp")
+      assert "PAM auth ok" in result, f"Auth failed:\n{result}"
     '';
   };
 }
