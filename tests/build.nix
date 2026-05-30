@@ -201,4 +201,30 @@ in
     mkdir -p $out
     echo "content verified" > $out/result
   '';
+
+  # Verify shells in passwd exist in rootfs, PATH entries exist
+  shellPaths = pkgs.runCommand "thermos-test-shell-paths" { } ''
+    echo "shell paths"
+    # format: name:password:uid:gid:gecos:home:shell
+    while IFS=: read -r name _ _ _ _ _ shell; do
+      if [ ! -e "${rootfsDrv}$shell" ]; then
+        echo "FAIL: $name shell $shell not in rootfs"
+        exit 1
+      fi
+      echo "  $name -> $shell ok"
+    done < ${usersDrv}/etc/passwd
+
+    # PATH from /etc/profile: every dir must exist
+    sed -n 's/.*PATH=//p' ${etcDrv}/etc/profile | tr ':' '\n' | while read -r d; do
+      if [ ! -d "${rootfsDrv}$d" ]; then
+        echo "FAIL: PATH entry $d not in rootfs"
+        exit 1
+      fi
+      echo "  PATH $d ok"
+    done
+
+    echo "shell paths ok"
+    mkdir -p $out
+    echo "paths verified" > $out/result
+  '';
 }

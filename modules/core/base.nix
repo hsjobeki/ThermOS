@@ -93,7 +93,7 @@
         {
           name = "profile";
           text = ''
-            export PATH=/bin:/usr/bin:/sbin
+            export PATH=/bin:/usr/bin
           '';
         }
       ];
@@ -126,7 +126,7 @@
           uid = 65534;
           gid = 65534;
           home = "/var/empty";
-          shell = "/sbin/nologin";
+          shell = "/bin/nologin";
           gecos = "Nobody";
         }
       ];
