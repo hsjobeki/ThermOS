@@ -1,4 +1,3 @@
-# /builders/units
 { types, ... }:
 {
   name = "units-builder";

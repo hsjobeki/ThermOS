@@ -1,4 +1,3 @@
-# /builders/etc
 { types, ... }:
 {
   name = "etc-builder";

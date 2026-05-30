@@ -1,5 +1,3 @@
-# /contracts/packages
-#
 # Merge strategy: concatenation. Deduplication happens in buildEnv.
 { types, ... }:
 {

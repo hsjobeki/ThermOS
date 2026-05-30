@@ -1,10 +1,11 @@
 # ThermOS
 
-A Linux system built with Nix. Configurable by anyone, hackable by engineers.
+NixOS meets macOS.
 
-Early stage -- boots to a root shell today. Working toward a system you
-can configure through a GUI, backed by the same typed infrastructure that
-builds the OS.
+A declarative Linux system. Easy to use, joyful to configure.
+
+> [!NOTE]
+> Under active research. Boots to a root shell today.
 
 ### For users
 

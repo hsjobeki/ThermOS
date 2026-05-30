@@ -1,5 +1,3 @@
-# /contracts/users
-#
 # Merge strategy: conflict detection on name and uid.
 # Two modules declaring the same username or uid is an error.
 { types, ... }:

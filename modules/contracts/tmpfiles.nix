@@ -1,5 +1,3 @@
-# /contracts/tmpfiles
-#
 # Merge strategy: concatenation. Rules are additive.
 # Conflicts (two rules for the same path) are handled by tmpfiles itself.
 { types, ... }:

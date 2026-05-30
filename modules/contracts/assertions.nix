@@ -1,5 +1,3 @@
-# /contracts/assertions
-#
 # Any module can publish assertions. The toplevel builder checks them all
 # before producing the system derivation.
 { types, ... }:

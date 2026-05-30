@@ -1,4 +1,3 @@
-# /builders/tmpfiles
 { types, ... }:
 {
   name = "tmpfiles-builder";

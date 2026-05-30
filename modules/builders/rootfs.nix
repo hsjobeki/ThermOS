@@ -1,4 +1,3 @@
-# /builders/rootfs
 { types, ... }:
 {
   name = "rootfs-builder";

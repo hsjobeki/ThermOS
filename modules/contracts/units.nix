@@ -1,5 +1,3 @@
-# /contracts/units
-#
 # Publishers provide [{ unitName, unitConfig }] records.
 # Merge strategy: deep merge by unit name. The merge output is an attrset
 # keyed by unit name, not a list. This is intentional: subscribers look up

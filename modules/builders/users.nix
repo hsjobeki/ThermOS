@@ -1,4 +1,3 @@
-# /builders/users
 # passwd: name:x:uid:gid:gecos:home:shell
 # group:  name:x:gid:members
 # shadow: name:!:1:::::

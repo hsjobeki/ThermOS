@@ -1,4 +1,3 @@
-# /builders/toplevel
 { types, ... }:
 {
   name = "toplevel-builder";

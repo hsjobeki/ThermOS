@@ -1,5 +1,3 @@
-# /contracts/etc
-#
 # Merge strategy: conflict detection. Two modules writing the same
 # /etc path is an error caught at eval time.
 { types, ... }:

@@ -1,5 +1,3 @@
-# /contracts/groups
-#
 # Merge strategy: conflict detection on name and gid.
 # Two modules declaring the same group name or gid is an error.
 { types, ... }:
