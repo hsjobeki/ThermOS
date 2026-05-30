@@ -47,6 +47,14 @@
     in
     assert assertionCheck;
     {
+      builders = {
+        etc = results.etcBuilder.derivation;
+        packages = results.packagesBuilder.derivation;
+        units = results.unitsBuilder.derivation;
+        tmpfiles = results.tmpfilesBuilder.derivation;
+        users = results.usersBuilder.derivation;
+      };
+
       derivation = pkgs.runCommand "thermos-system" { } ''
         mkdir -p $out
 
@@ -55,8 +63,6 @@
         ln -s ${results.unitsBuilder.derivation}/etc/systemd $out/systemd
         ln -s ${results.tmpfilesBuilder.derivation}/etc/tmpfiles.d $out/tmpfiles.d
         ln -s ${results.usersBuilder.derivation} $out/users
-
-        echo -n "thermos" > $out/os-release
       '';
     };
 }

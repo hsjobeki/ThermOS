@@ -7,20 +7,8 @@
     nixpkgs = {
       path = "/nixpkgs";
     };
-    etcBuilder = {
-      path = "/builders/etc";
-    };
-    packagesBuilder = {
-      path = "/builders/packages";
-    };
-    unitsBuilder = {
-      path = "/builders/units";
-    };
-    tmpfilesBuilder = {
-      path = "/builders/tmpfiles";
-    };
-    usersBuilder = {
-      path = "/builders/users";
+    toplevelBuilder = {
+      path = "/builders/toplevel";
     };
   };
 
@@ -29,11 +17,11 @@
     let
       pkgs = inputs.nixpkgs.pkgs;
 
-      etcDrv = results.etcBuilder.derivation;
-      packagesDrv = results.packagesBuilder.derivation;
-      unitsDrv = results.unitsBuilder.derivation;
-      tmpfilesDrv = results.tmpfilesBuilder.derivation;
-      usersDrv = results.usersBuilder.derivation;
+      etcDrv = results.toplevelBuilder.builders.etc;
+      packagesDrv = results.toplevelBuilder.builders.packages;
+      unitsDrv = results.toplevelBuilder.builders.units;
+      tmpfilesDrv = results.toplevelBuilder.builders.tmpfiles;
+      usersDrv = results.toplevelBuilder.builders.users;
 
       systemdBin = "${pkgs.systemd}/lib/systemd/systemd";
     in
