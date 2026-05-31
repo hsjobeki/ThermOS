@@ -1,4 +1,3 @@
-# ThermOS entrypoint
 { nixpkgs, adios }:
 {
   system ? builtins.currentSystem,

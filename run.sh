@@ -56,9 +56,9 @@ if [[ "$MODE" == "shell" ]]; then
 else
   echo ""
   echo "  ┌──────────────────────────────────────────────────┐"
-  echo "  │  ThermOS - nspawn boot                              │"
+  echo "  │  ThermOS - nspawn boot                           │"
   echo "  │                                                  │"
-  echo "  │  Login:  root / thermos                             │"
+  echo "  │  Login:  root / thermos                          │"
   echo "  │  Stop:   poweroff                                │"
   echo "  │    or:   sudo machinectl poweroff $MACHINE       │"
   echo "  └──────────────────────────────────────────────────┘"
