@@ -7,8 +7,16 @@ let
   usersDrv = (thermos.evaluated.modules.builders.modules.users { }).derivation;
   rootfsDrv = thermos.rootfs;
 
-  # Password hash for 'thermostest' (used in pamAuth test)
+  # PAM test: build a rootfs with a known password
   passwordHash = "\$6\$thermostest\$d8h//689.ccFiiNJKscJ9ght7bWyk0WDVBXEHKrMahTIPHLfsMmKeyGgfClxvbpWsBxd/ydyeBzFVWOCLPEiZ1";
+  pamThermos = import ../default.nix {
+    options = {
+      "/core/base" = {
+        rootHashedPassword = passwordHash;
+      };
+    };
+  };
+  pamRootfsDrv = pamThermos.rootfs;
 in
 {
   # systemd-analyze verify with real /run/systemd/
@@ -143,9 +151,7 @@ in
       host.start()
       host.wait_for_unit("multi-user.target")
 
-      host.succeed("cp -a ${rootfsDrv} /rootfs && chmod -R u+w /rootfs")
-      host.succeed("sed -i 's|^root:!:|root:${passwordHash}:|' /rootfs/etc/shadow")
-      host.succeed("chown root:root /rootfs/etc/shadow && chmod 0640 /rootfs/etc/shadow")
+      host.succeed("cp -a ${pamRootfsDrv} /rootfs && chmod -R u+w /rootfs")
 
       # expect script: spawn nspawn, log in as root, verify shell works
       host.succeed("""cat > /tmp/login.exp << 'EXPECT'

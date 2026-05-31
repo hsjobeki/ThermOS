@@ -23,7 +23,7 @@ done
 
 if [[ -z "${ROOTFS:-}" ]]; then
   echo "building rootfs"
-  ROOTFS=$(nix-build systems/test.nix --no-out-link)
+  ROOTFS=$(nix-build systems/test.nix -A rootfs --no-out-link)
 fi
 
 echo "rootfs: $ROOTFS"
@@ -33,15 +33,8 @@ cleanup() { sudo rm -rf "$WORKDIR"; }
 trap cleanup EXIT
 
 echo "preparing copy"
-cp -a "$ROOTFS" "$WORKDIR/rootfs"
-chmod -R u+w "$WORKDIR/rootfs"
-
-# Unlock root. Password: thermos
-HASH='$6$thermos$H0ll22GovTVsmgXyGSxBB1rAwU.QF6D/nFspidCXj0vFJ6YzUUzhs1r8/mEiXnb0IUUP8t2tChAmwA.vEXH9G/'
-sed -i "s|^root:!:|root:${HASH}:|" "$WORKDIR/rootfs/etc/shadow"
-sudo chown root:root "$WORKDIR/rootfs/etc/shadow"
-sudo chmod 0640 "$WORKDIR/rootfs/etc/shadow"
-
+sudo cp -a "$ROOTFS" "$WORKDIR/rootfs"
+sudo chmod -R u+w "$WORKDIR/rootfs"
 
 sudo rm -rf "/run/systemd/nspawn/unix-export/$MACHINE"
 

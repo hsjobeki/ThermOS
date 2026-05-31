@@ -53,11 +53,9 @@
           ln -s ${tmpfilesDrv}/etc/tmpfiles.d $out/etc/tmpfiles.d
         fi
 
-        for f in passwd group shadow; do
-          if [ -f ${usersDrv}/etc/$f ]; then
-            ln -s ${usersDrv}/etc/$f $out/etc/$f
-          fi
-        done
+        cp ${usersDrv}/etc/passwd $out/etc/passwd
+        cp ${usersDrv}/etc/group $out/etc/group
+        cp ${usersDrv}/etc/shadow $out/etc/shadow
         mkdir -p $out/usr
         ln -s ${packagesDrv}/bin $out/usr/bin
         ln -s ${packagesDrv}/bin $out/bin
