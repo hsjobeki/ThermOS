@@ -54,6 +54,8 @@ let
   };
 
   evaluated = tree { inherit options; };
+
+  initrdResult = evaluated.modules.builders.modules.initrd { };
 in
 {
   inherit
@@ -65,4 +67,7 @@ in
 
   toplevel = (evaluated.modules.builders.modules.toplevel { }).derivation;
   rootfs = (evaluated.modules.builders.modules.rootfs { }).derivation;
+  kernel = initrdResult.kernel;
+  initrd = initrdResult.derivation;
+  image = (evaluated.modules.builders.modules.image { }).derivation;
 }

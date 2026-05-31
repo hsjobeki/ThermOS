@@ -687,6 +687,8 @@ in
       expr = attrNames ev.modules.builders.modules;
       expected = [
         "etc"
+        "image"
+        "initrd"
         "packages"
         "rootfs"
         "tmpfiles"
