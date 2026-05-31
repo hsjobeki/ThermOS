@@ -57,75 +57,55 @@ services/getty.nix    publishes units, /etc/pam.d
         |
         v
   rootfs             FHS tree ready for nspawn or disk image
+  initrd + image     kernel modules, ext4 disk for QEMU boot
 ```
 
 ## Try it
 
-Requires Nix and `systemd-nspawn` (any systemd-based Linux host).
+Requires Nix. Container boot needs `systemd-nspawn`, QEMU boot needs
+`qemu-system-x86_64` with KVM.
 
 ```
-./run.sh
-```
-
-This builds the rootfs and boots it in a container. Login: `root` / `thermos`.
-Type `poweroff` to stop.
-
-```
+./run.sh              # nspawn container
+./run.sh --qemu       # QEMU VM (serial console)
 ./run.sh --shell      # root shell without systemd
-./run.sh /nix/...     # boot a pre-built rootfs path
 ```
+
+Login: `root` / `thermos`. Stop nspawn: `poweroff`. Stop QEMU: `Ctrl-a x`.
 
 ## Status
 
-**POC**. Currently Boots to a root shell via `systemd-nspawn`. Getty, PAM, static
-`/etc/passwd`.
-
-It will be extended further to proof it can solve the stated problems.
+Boots to a root shell with systemd, PAM, D-Bus, OpenSSH. Two boot paths:
+nspawn containers and QEMU VMs with direct kernel boot.
 
 ### Roadmap
 
-- Boot a real system with its own kernel, initrd, and boot chain
-- Immutable, cryptographically verified disk images
-- Live system management: rebuild, switch, rollback
-- Configuration interface with CLI and GUI
-
-ThermOS has the benefit of a proper user model from day one.
-
-Insights may feed back into the NixOS module system and options, but retrofitting
-this will take some time to deliver the same experience.
+- [x] Contract-based module system with pub/sub data flow
+- [x] Boot in nspawn container (systemd, PAM, SSH, D-Bus)
+- [x] Boot in QEMU with kernel, initrd, and ext4 disk image
+- [ ] Secret provisioning (host keys, credentials outside the root image)
+- [ ] Immutable, cryptographically verified disk images (UKI, dm-verity)
+- [ ] Live system management: rebuild, switch, rollback
 
 ## Layout
 
 ```
 entrypoint.nix          wires module groups into the adios tree
+systems/
+  test.nix              nspawn configuration (SSH key, root password)
+  qemu.nix              QEMU configuration (serial console, no VTs)
 modules/
   contracts/            typed data schemas (etc, units, users, ...)
-  builders/             derivation producers (rootfs, toplevel, etc, units, users)
+  builders/             derivation producers (rootfs, initrd, image, etc, units, users)
   core/                 base system (root user, FHS, default target)
-  services/             service modules (getty)
+  middleware/           data transformers (PAM store path resolution)
+  services/             service modules (getty, dbus, openssh)
 ```
 
 ## Tests
 
-Eval tests:
-
 ```
-nix-unit tests/eval.nix
+nix-unit tests/eval.nix              # eval tests (contract merges, tree structure)
+nix-build tests/build.nix            # build tests (file formats, rootfs layout)
+nix-build tests/container.nix        # container tests (real systemd boot, PAM auth)
 ```
-
-Build tests:
-
-```
-nix-build tests/build.nix
-nix-build tests/build.nix -A unitVerify
-```
-
-Container tests:
-
-```
-nix-build tests/container.nix
-```
-
-VM Tests:
-
-Comming, as soon as we can boot our own!
