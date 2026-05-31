@@ -1,29 +1,29 @@
 # ThermOS
 
-NixOS meets macOS.
+Think: NixOS meets macOS.
 
 A declarative Linux system. Easy to use, joyful to configure.
 
 > [!NOTE]
-> Under active research. Boots to a root shell today.
+> Under active research. Contributions welcome
 
-### For users
+## For users
 
 NixOS proved that declarative system management works. But it was built
-by hackers for hackers -- configuring it means editing Nix code, and
+by hackers for hackers. Configuring it means editing Nix code, and
 there is no boundary between what users should see and what modules use
 internally. There have been [attempts](https://github.com/nix-gui/nix-gui)
 at a GUI, and tools like [MyNixOS](https://mynixos.com/) exist, but they
-feel bolted on -- form renderers for thousands of options, most of which
+feel bolted on: form renderers for thousands of options, most of which
 no user should ever touch.
 
 ThermOS draws that boundary. Module options that face users are separated
 from the internal wiring that modules use to talk to each other. This
-makes a real configuration interface possible -- not a code editor, but
+makes a real configuration interface possible. Not a code editor, but
 something closer to GNOME Settings, where enabling SSH or adding a user
 just works.
 
-### For engineers
+## For engineers
 
 NixOS modules share a global `config` namespace. Any module can read any
 option without declaring the dependency. An internal refactoring is
@@ -34,15 +34,16 @@ things break because the coupling points are everywhere. There is
 NixOS, but it's retrofitting them onto the global namespace.
 
 ThermOS is built on [Adios](https://github.com/adisbladis/adios), where
-contracts are the foundation -- explicit inputs, typed options, pub/sub.
+contracts are the foundation. Explicit inputs, typed options, pub/sub.
 Modules declare what they need. Conflicts are caught at eval time. The
 dependency graph is visible and inspectable.
 
 ## How it works
 
 Modules publish typed data to **contracts** (etc files, systemd units, users,
-packages). **Builders** subscribe to contracts and produce derivations. The
-module tree is wired in `entrypoint.nix`; there is no `eval-config.nix`.
+packages). **Builders** subscribe to contracts and produce derivations.
+
+This diagram is rendered [interactive on the website](https://hsjobeki.github.io/ThermOS/)
 
 ```
 core/base.nix        publishes /etc entries, users, units
@@ -76,8 +77,10 @@ Type `poweroff` to stop.
 
 ## Status
 
-Early. Boots to a root shell via `systemd-nspawn`. Getty, PAM, static
+**POC**. Currently Boots to a root shell via `systemd-nspawn`. Getty, PAM, static
 `/etc/passwd`.
+
+It will be extended further to proof it can solve the stated problems.
 
 ### Roadmap
 
@@ -88,20 +91,21 @@ Early. Boots to a root shell via `systemd-nspawn`. Getty, PAM, static
 - [ ] Disk image builder (repart)
 - [ ] System switch (rebuild + reload)
 - [ ] Secure Boot / measured boot
+- [ ] Opinionated system defaults (Niri vs. Gnome etc.)
 
 **Configuration interface** (under research)
 
 - [ ] Define user-facing options
 - [ ] JSON schema export for module interfaces
 - [ ] Configuration persistence (declarative, GUI-writable format)
-- [ ] Rebuild + apply pipeline (the system is immutable -- changes require a rebuild)
+- [ ] Rebuild + apply pipeline (the system is immutable, so changes require a rebuild)
 - [ ] CLI for system configuration
-- [ ] GUI (gtk like libadwaita?)
+- [ ] GUI (gtk like libadwaita? Something rust based?)
 
 ThermOS has the benefit of a proper user model from day one.
 
 Insights may feed back into the NixOS module system and options, but retrofitting
-this will take years to deliver the same experience, if it ever will.
+this will take some time to deliver the same experience.
 
 ## Layout
 
@@ -116,26 +120,25 @@ modules/
 
 ## Tests
 
-Eval tests (pure, fast -- no builds):
+Eval tests:
 
 ```
 nix-unit tests/eval.nix
 ```
 
-Build tests (builds derivations, checks structure):
+Build tests:
 
 ```
 nix-build tests/build.nix
-```
-
-Single build test:
-
-```
 nix-build tests/build.nix -A unitVerify
 ```
 
-Container tests (full NixOS VM, slow):
+Container tests:
 
 ```
 nix-build tests/container.nix
 ```
+
+VM Tests:
+
+Comming, as soon as we can boot our own!
