@@ -21,33 +21,13 @@
     "/contracts/tmpfiles"
     "/contracts/users"
     "/contracts/groups"
+    "/contracts/pam"
   ];
 
   impl =
     { options, inputs, ... }:
     let
       pkgs = inputs.nixpkgs.pkgs;
-      # NixOS patches pam_unix to hardcode /run/wrappers/bin/unix_chkpwd,
-      # a setuid wrapper that doesn't exist outside NixOS. Remove the patch
-      # so pam_unix uses the default ${sbin}/unix_chkpwd from its own store path.
-      pam = pkgs.pam.overrideAttrs { postPatch = ""; };
-
-      pamLogin = ''
-        auth       required     ${pam}/lib/security/pam_unix.so nullok
-        account    required     ${pam}/lib/security/pam_unix.so
-        session    required     ${pam}/lib/security/pam_unix.so
-      '';
-      pamOther = ''
-        auth       required     ${pam}/lib/security/pam_deny.so
-        account    required     ${pam}/lib/security/pam_deny.so
-        session    required     ${pam}/lib/security/pam_deny.so
-      '';
-      pamSystemdUser = ''
-        account    required     ${pam}/lib/security/pam_unix.so no_pass_expiry
-        session    required     ${pam}/lib/security/pam_loginuid.so
-        session    optional     ${pam}/lib/security/pam_keyinit.so force revoke
-        session    optional     ${pam}/lib/security/pam_umask.so silent
-      '';
     in
     {
       etc = [
@@ -63,24 +43,6 @@
             PRETTY_NAME="ThermOS"
           '';
         }
-        # PAM config. Absolute store paths so no /lib/security symlink needed.
-        {
-          name = "pam.d/login";
-          text = pamLogin;
-        }
-        {
-          name = "pam.d/su";
-          text = pamLogin;
-        }
-        {
-          name = "pam.d/other";
-          text = pamOther;
-        }
-        {
-          name = "pam.d/systemd-user";
-          text = pamSystemdUser;
-        }
-        # pam_unix and glibc NSS need this for passwd/group resolution.
         {
           name = "nsswitch.conf";
           text = ''
@@ -94,6 +56,99 @@
           text = ''
             export PATH=/bin:/usr/bin
           '';
+        }
+      ];
+
+      pam = [
+        {
+          name = "login";
+          rules = [
+            {
+              type = "auth";
+              control = "required";
+              module = "pam_unix";
+              args = "nullok";
+            }
+            {
+              type = "account";
+              control = "required";
+              module = "pam_unix";
+            }
+            {
+              type = "session";
+              control = "required";
+              module = "pam_unix";
+            }
+          ];
+        }
+        {
+          name = "su";
+          rules = [
+            {
+              type = "auth";
+              control = "required";
+              module = "pam_unix";
+              args = "nullok";
+            }
+            {
+              type = "account";
+              control = "required";
+              module = "pam_unix";
+            }
+            {
+              type = "session";
+              control = "required";
+              module = "pam_unix";
+            }
+          ];
+        }
+        {
+          name = "other";
+          rules = [
+            {
+              type = "auth";
+              control = "required";
+              module = "pam_deny";
+            }
+            {
+              type = "account";
+              control = "required";
+              module = "pam_deny";
+            }
+            {
+              type = "session";
+              control = "required";
+              module = "pam_deny";
+            }
+          ];
+        }
+        {
+          name = "systemd-user";
+          rules = [
+            {
+              type = "account";
+              control = "required";
+              module = "pam_unix";
+              args = "no_pass_expiry";
+            }
+            {
+              type = "session";
+              control = "required";
+              module = "pam_loginuid";
+            }
+            {
+              type = "session";
+              control = "optional";
+              module = "pam_keyinit";
+              args = "force revoke";
+            }
+            {
+              type = "session";
+              control = "optional";
+              module = "pam_umask";
+              args = "silent";
+            }
+          ];
         }
       ];
 

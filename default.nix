@@ -1,4 +1,4 @@
-(import ./nix/importer.nix) {
+import ./nix/importer.nix {
   # evaluation arguments
   #
   # groups = [ "eval" "dev" ]

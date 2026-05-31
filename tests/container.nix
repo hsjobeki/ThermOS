@@ -1,6 +1,6 @@
 # Container tests: nix-build tests/container.nix
 let
-  thermos = (import ../default.nix) { };
+  thermos = import ../default.nix { };
   pkgs = thermos.pkgs;
 
   unitsDrv = (thermos.evaluated.modules.builders.modules.units { }).derivation;
@@ -9,8 +9,6 @@ let
 
   # Password hash for 'thermostest' (used in pamAuth test)
   passwordHash = "\$6\$thermostest\$d8h//689.ccFiiNJKscJ9ght7bWyk0WDVBXEHKrMahTIPHLfsMmKeyGgfClxvbpWsBxd/ydyeBzFVWOCLPEiZ1";
-
-  thermosPam = pkgs.pam.overrideAttrs { postPatch = ""; };
 in
 {
   # systemd-analyze verify with real /run/systemd/

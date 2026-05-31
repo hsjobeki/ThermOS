@@ -1,6 +1,6 @@
 # Eval tests: nix-unit tests/eval.nix
 let
-  thermos = (import ../default.nix) { };
+  thermos = import ../default.nix { };
   types = thermos.evaluated.types;
 
   etcContract = (import ../modules/contracts/etc.nix { inherit types; }).contract;
@@ -10,6 +10,7 @@ let
   assertionsContract = (import ../modules/contracts/assertions.nix { inherit types; }).contract;
   usersContract = (import ../modules/contracts/users.nix { inherit types; }).contract;
   groupsContract = (import ../modules/contracts/groups.nix { inherit types; }).contract;
+  pamContract = (import ../modules/contracts/pam.nix { inherit types; }).contract;
 
   ev = thermos.evaluated;
 
@@ -515,8 +516,144 @@ in
         ];
       };
     };
-  };
 
+    pam = {
+      testMergeDisjoint = {
+        expr = map (s: s.name) (
+          pamContract.merge {
+            a = [
+              {
+                name = "login";
+                rules = [
+                  {
+                    type = "auth";
+                    control = "required";
+                    module = "pam_unix";
+                  }
+                ];
+              }
+            ];
+            b = [
+              {
+                name = "sshd";
+                rules = [
+                  {
+                    type = "auth";
+                    control = "required";
+                    module = "pam_unix";
+                    args = "nullok";
+                  }
+                ];
+              }
+            ];
+          }
+        );
+        expected = [
+          "login"
+          "sshd"
+        ];
+      };
+
+      testMergeConflictThrows = {
+        expr = pamContract.merge {
+          a = [
+            {
+              name = "login";
+              rules = [
+                {
+                  type = "auth";
+                  control = "required";
+                  module = "pam_unix";
+                }
+              ];
+            }
+          ];
+          b = [
+            {
+              name = "login";
+              rules = [
+                {
+                  type = "auth";
+                  control = "required";
+                  module = "pam_deny";
+                }
+              ];
+            }
+          ];
+        };
+        expectedError.type = "ThrownError";
+        expectedError.msg = "Conflicting PAM service names.*login";
+      };
+
+      testMergeEmpty = {
+        expr = pamContract.merge { };
+        expected = [ ];
+      };
+
+      # Demonstrates the pattern openssh would use
+      testSshdServiceDeclaration = {
+        expr =
+          let
+            sshdPam = [
+              {
+                name = "sshd";
+                rules = [
+                  {
+                    type = "auth";
+                    control = "required";
+                    module = "pam_unix";
+                    args = "nullok";
+                  }
+                  {
+                    type = "account";
+                    control = "required";
+                    module = "pam_unix";
+                  }
+                  {
+                    type = "session";
+                    control = "required";
+                    module = "pam_unix";
+                  }
+                  {
+                    type = "session";
+                    control = "optional";
+                    module = "pam_loginuid";
+                  }
+                ];
+              }
+            ];
+            merged = pamContract.merge {
+              base = [
+                {
+                  name = "login";
+                  rules = [
+                    {
+                      type = "auth";
+                      control = "required";
+                      module = "pam_unix";
+                    }
+                  ];
+                }
+              ];
+              openssh = sshdPam;
+            };
+          in
+          {
+            count = length merged;
+            names = map (s: s.name) merged;
+            sshdRuleCount = length (head (filter (s: s.name == "sshd") merged)).rules;
+          };
+        expected = {
+          count = 2;
+          names = [
+            "login"
+            "sshd"
+          ];
+          sshdRuleCount = 4;
+        };
+      };
+    };
+  };
   # tree structure
 
   tree = {
@@ -526,6 +663,7 @@ in
         "builders"
         "contracts"
         "core"
+        "middleware"
         "nixpkgs"
         "services"
       ];
@@ -538,6 +676,7 @@ in
         "etc"
         "groups"
         "packages"
+        "pam"
         "tmpfiles"
         "units"
         "users"
@@ -568,6 +707,11 @@ in
         "dbus"
         "getty"
       ];
+    };
+
+    testMiddlewareChildren = {
+      expr = attrNames ev.modules.middleware.modules;
+      expected = [ "pam" ];
     };
   };
 
@@ -631,7 +775,7 @@ in
     testPublishesUnits = {
       expr =
         let
-          impl = (ev.modules.services.modules.dbus { });
+          impl = ev.modules.services.modules.dbus { };
         in
         map (u: u.unitName) impl.units;
       expected = [
@@ -643,7 +787,7 @@ in
     testSocketWantedBySockets = {
       expr =
         let
-          impl = (ev.modules.services.modules.dbus { });
+          impl = ev.modules.services.modules.dbus { };
           socket = head (filter (u: u.unitName == "dbus.socket") impl.units);
         in
         socket.unitConfig.Install.WantedBy;
@@ -653,7 +797,7 @@ in
     testServiceWantedByMultiUser = {
       expr =
         let
-          impl = (ev.modules.services.modules.dbus { });
+          impl = ev.modules.services.modules.dbus { };
           svc = head (filter (u: u.unitName == "dbus.service") impl.units);
         in
         svc.unitConfig.Install.WantedBy;
@@ -663,7 +807,7 @@ in
     testServiceExecStart = {
       expr =
         let
-          impl = (ev.modules.services.modules.dbus { });
+          impl = ev.modules.services.modules.dbus { };
           svc = head (filter (u: u.unitName == "dbus.service") impl.units);
         in
         match ".*dbus-daemon.*" svc.unitConfig.Service.ExecStart != null;
@@ -673,7 +817,7 @@ in
     testMessagebusUser = {
       expr =
         let
-          impl = (ev.modules.services.modules.dbus { });
+          impl = ev.modules.services.modules.dbus { };
           user = head impl.users;
         in
         {
@@ -689,7 +833,7 @@ in
     testMessagebusGroup = {
       expr =
         let
-          impl = (ev.modules.services.modules.dbus { });
+          impl = ev.modules.services.modules.dbus { };
         in
         (head impl.groups).name;
       expected = "messagebus";
@@ -698,7 +842,7 @@ in
     testDbusConfigInEtc = {
       expr =
         let
-          impl = (ev.modules.services.modules.dbus { });
+          impl = ev.modules.services.modules.dbus { };
         in
         length (filter (e: e.name == "dbus-1/system.conf") impl.etc) == 1;
       expected = true;
@@ -707,7 +851,7 @@ in
     testDbusPackage = {
       expr =
         let
-          impl = (ev.modules.services.modules.dbus { });
+          impl = ev.modules.services.modules.dbus { };
         in
         length (filter (p: p.package == thermos.pkgs.dbus) impl.packages) == 1;
       expected = true;
@@ -720,7 +864,7 @@ in
     testGettyPublishesUnit = {
       expr =
         let
-          impl = (ev.modules.services.modules.getty { });
+          impl = ev.modules.services.modules.getty { };
         in
         map (u: u.unitName) impl.units;
       expected = [ "getty@tty1.service" ];
@@ -729,7 +873,7 @@ in
     testGettyUnitHasSections = {
       expr =
         let
-          impl = (ev.modules.services.modules.getty { });
+          impl = ev.modules.services.modules.getty { };
           unit = head impl.units;
         in
         attrNames unit.unitConfig;
@@ -743,7 +887,7 @@ in
     testGettyExecStartContainsAgetty = {
       expr =
         let
-          impl = (ev.modules.services.modules.getty { });
+          impl = ev.modules.services.modules.getty { };
           unit = head impl.units;
         in
         match ".*agetty.*" unit.unitConfig.Service.ExecStart != null;
@@ -753,7 +897,7 @@ in
     testGettyDefaultNoAutologin = {
       expr =
         let
-          impl = (ev.modules.services.modules.getty { });
+          impl = ev.modules.services.modules.getty { };
           unit = head impl.units;
         in
         match ".*--autologin.*" unit.unitConfig.Service.ExecStart != null;
@@ -763,7 +907,7 @@ in
     testGettyWantedByMultiUser = {
       expr =
         let
-          impl = (ev.modules.services.modules.getty { });
+          impl = ev.modules.services.modules.getty { };
           unit = head impl.units;
         in
         unit.unitConfig.Install.WantedBy;
@@ -777,7 +921,7 @@ in
     testGettyAutologin = {
       expr =
         let
-          impl = (ev.modules.services.modules.getty { autologinUser = "root"; });
+          impl = ev.modules.services.modules.getty { autologinUser = "root"; };
           unit = head impl.units;
         in
         match ".*--autologin root.*" unit.unitConfig.Service.ExecStart != null;
@@ -787,15 +931,13 @@ in
     testGettyMultipleTtys = {
       expr =
         let
-          impl = (
-            ev.modules.services.modules.getty {
-              ttys = [
-                "tty1"
-                "tty2"
-                "tty3"
-              ];
-            }
-          );
+          impl = ev.modules.services.modules.getty {
+            ttys = [
+              "tty1"
+              "tty2"
+              "tty3"
+            ];
+          };
         in
         map (u: u.unitName) impl.units;
       expected = [
@@ -808,12 +950,10 @@ in
     testGettySerialTty = {
       expr =
         let
-          impl = (
-            ev.modules.services.modules.getty {
-              serialTtys = [ "ttyS0" ];
-              baudRate = "9600";
-            }
-          );
+          impl = ev.modules.services.modules.getty {
+            serialTtys = [ "ttyS0" ];
+            baudRate = "9600";
+          };
           unit = head (filter (u: u.unitName == "serial-getty@ttyS0.service") impl.units);
         in
         match ".*--keep-baud ttyS0 9600.*" unit.unitConfig.Service.ExecStart != null;
@@ -823,15 +963,13 @@ in
     testGettyAutologinWithMultipleTtys = {
       expr =
         let
-          impl = (
-            ev.modules.services.modules.getty {
-              ttys = [
-                "tty1"
-                "tty2"
-              ];
-              autologinUser = "admin";
-            }
-          );
+          impl = ev.modules.services.modules.getty {
+            ttys = [
+              "tty1"
+              "tty2"
+            ];
+            autologinUser = "admin";
+          };
         in
         all (u: match ".*--autologin admin.*" u.unitConfig.Service.ExecStart != null) impl.units;
       expected = true;
@@ -840,7 +978,7 @@ in
     testBaseCustomHostname = {
       expr =
         let
-          impl = (ev.modules.core.modules.base { hostName = "myhost"; });
+          impl = ev.modules.core.modules.base { hostName = "myhost"; };
           hostnameEntry = head (filter (e: e.name == "hostname") impl.etc);
         in
         hostnameEntry.text;
@@ -878,6 +1016,113 @@ in
     };
   };
 
+  # pam middleware pipeline
+
+  pamProvider = {
+    # Base module publishes structured PAM declarations
+    testBasePublishesPam = {
+      expr =
+        let
+          impl = ev.modules.core.modules.base { };
+        in
+        map (s: s.name) impl.pam;
+      expected = [
+        "login"
+        "su"
+        "other"
+        "systemd-user"
+      ];
+    };
+
+    # Middleware resolves module names to store paths
+    testMiddlewareRendersEtc = {
+      expr =
+        let
+          impl = ev.modules.middleware.modules.pam { };
+          loginEntry = head (filter (e: e.name == "pam.d/login") impl.etc);
+        in
+        match ".*pam_unix\\.so.*" loginEntry.text != null;
+      expected = true;
+    };
+
+    # Middleware output contains nix store paths (not bare module names)
+    testMiddlewareResolvesStorePaths = {
+      expr =
+        let
+          impl = ev.modules.middleware.modules.pam { };
+          loginEntry = head (filter (e: e.name == "pam.d/login") impl.etc);
+        in
+        match ".*/nix/store/[a-z0-9]+-linux-pam[^/]*/lib/security/pam_unix\\.so.*" loginEntry.text != null;
+      expected = true;
+    };
+
+    # Middleware renders all base PAM services
+    testMiddlewareRendersFourServices = {
+      expr =
+        let
+          impl = ev.modules.middleware.modules.pam { };
+        in
+        length impl.etc;
+      expected = 4;
+    };
+
+    # Demonstrates openssh pattern: a service publishes PAM rules,
+    # middleware resolves them alongside base services.
+    testSshdPatternIntegration = {
+      expr =
+        let
+          # What openssh would publish
+          sshdRules = [
+            {
+              name = "sshd";
+              rules = [
+                {
+                  type = "auth";
+                  control = "required";
+                  module = "pam_unix";
+                  args = "nullok";
+                }
+                {
+                  type = "account";
+                  control = "required";
+                  module = "pam_unix";
+                }
+                {
+                  type = "session";
+                  control = "required";
+                  module = "pam_unix";
+                }
+                {
+                  type = "session";
+                  control = "optional";
+                  module = "pam_loginuid";
+                }
+              ];
+            }
+          ];
+          # What base publishes
+          baseRules = (ev.modules.core.modules.base { }).pam;
+          # Merge like the contract would
+          merged = pamContract.merge {
+            base = baseRules;
+            openssh = sshdRules;
+          };
+          # Verify sshd is in the merged set
+          sshdService = head (filter (s: s.name == "sshd") merged);
+        in
+        {
+          totalServices = length merged;
+          sshdRuleCount = length sshdService.rules;
+          firstModule = (head sshdService.rules).module;
+        };
+      expected = {
+        totalServices = 5;
+        sshdRuleCount = 4;
+        firstModule = "pam_unix";
+      };
+    };
+  };
+
   # assertions
 
   assertions = {
@@ -904,7 +1149,7 @@ in
     testOptionsPassthroughGettyAutologin = {
       expr =
         let
-          configured = (import ../default.nix) {
+          configured = import ../default.nix {
             options = {
               "/services/getty" = {
                 autologinUser = "testuser";
@@ -921,7 +1166,7 @@ in
     testOptionsPassthroughHostname = {
       expr =
         let
-          configured = (import ../default.nix) {
+          configured = import ../default.nix {
             options = {
               "/core/base" = {
                 hostName = "customhost";
@@ -938,7 +1183,7 @@ in
     testEmptyOptionsPreservesDefaults = {
       expr =
         let
-          configured = (import ../default.nix) { };
+          configured = import ../default.nix { };
           base = (configured.evaluated.modules.core.modules.base { });
           entry = head (filter (e: e.name == "hostname") base.etc);
         in

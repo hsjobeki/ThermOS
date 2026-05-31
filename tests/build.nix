@@ -1,7 +1,7 @@
 # Eval tests: nix-build tests/build.nix
 # One test:   nix-build tests/build.nix -A unitVerify
 let
-  thermos = (import ../default.nix) { };
+  thermos = import ../default.nix { };
   pkgs = thermos.pkgs;
   ev = thermos.evaluated;
 

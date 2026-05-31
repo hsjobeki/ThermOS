@@ -11,6 +11,7 @@ let
   builderModules = adios.adios.lib.importModules ./modules/builders;
   coreModules = adios.adios.lib.importModules ./modules/core;
   serviceModules = adios.adios.lib.importModules ./modules/services;
+  middlewareModules = adios.adios.lib.importModules ./modules/middleware;
 
   # Makes pkgs and lib available at /nixpkgs
   nixpkgsModule =
@@ -45,6 +46,9 @@ let
       };
       services = {
         modules = serviceModules;
+      };
+      middleware = {
+        modules = middlewareModules;
       };
     };
   };
