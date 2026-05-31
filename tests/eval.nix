@@ -1339,15 +1339,6 @@ in
       expected = 1;
     };
 
-    testTmpfiles = {
-      expr =
-        let
-          impl = ev.modules.services.modules.openssh { };
-        in
-        (head impl.tmpfiles).rule;
-      expected = "d /var/lib/ssh 0700 root root -";
-    };
-
     testAuthorizedKeysRendered = {
       expr =
         let

@@ -28,7 +28,6 @@
     "/contracts/users"
     "/contracts/groups"
     "/contracts/packages"
-    "/contracts/tmpfiles"
     "/contracts/pam"
     "/contracts/etc"
   ];
@@ -45,6 +44,10 @@
         Port ${toString options.port}
         PermitRootLogin ${options.permitRootLogin}
         UsePAM yes
+        PasswordAuthentication no
+        KbdInteractiveAuthentication no
+        X11Forwarding no
+        MaxAuthTries 3
         AuthorizedKeysFile /etc/ssh/authorized_keys/%u
         ${builtins.concatStringsSep "\n" (map (t: "HostKey /var/lib/ssh/ssh_host_${t}_key") hostKeyTypes)}
       '';
@@ -88,7 +91,7 @@
                 "network.target"
                 "sshd-keygen.target"
               ];
-              Wants = [ "sshd-keygen.target" ];
+              Requires = [ "sshd-keygen.target" ];
             };
             Service = {
               ExecStart = "${openssh}/bin/sshd -D -f /etc/ssh/sshd_config";
@@ -131,10 +134,6 @@
         };
       }) hostKeyTypes;
 
-      tmpfiles = [
-        { rule = "d /var/lib/ssh 0700 root root -"; }
-      ];
-
       pam = [
         {
           name = "sshd";
@@ -143,7 +142,6 @@
               type = "auth";
               control = "required";
               module = "pam_unix";
-              args = "nullok";
             }
             {
               type = "account";
