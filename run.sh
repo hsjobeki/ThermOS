@@ -23,7 +23,7 @@ done
 
 if [[ -z "${ROOTFS:-}" ]]; then
   echo "building rootfs"
-  ROOTFS=$(nix-build default.nix -A rootfs --no-out-link)
+  ROOTFS=$(nix-build systems/test.nix --no-out-link)
 fi
 
 echo "rootfs: $ROOTFS"
