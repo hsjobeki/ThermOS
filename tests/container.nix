@@ -83,6 +83,7 @@ in
       assert "Welcome to ThermOS" in boot_log, f"Missing ThermOS banner in log:\n{boot_log}"
       assert "Multi-User System" in boot_log, f"multi-user.target not queued:\n{boot_log}"
       assert "login:" in boot_log, f"No login prompt in log:\n{boot_log}"
+      assert "Started D-Bus System Message Bus" in boot_log, f"dbus not started:\n{boot_log}"
 
       host.execute("kill $(cat /tmp/nspawn.pid) 2>/dev/null; true")
     '';
@@ -114,6 +115,12 @@ in
 
       result = machine.succeed("getent group root")
       assert result.startswith("root:"), f"unexpected root group entry: {result}"
+
+      result = machine.succeed("getent passwd messagebus")
+      assert result.startswith("messagebus:"), f"unexpected messagebus entry: {result}"
+
+      result = machine.succeed("getent group messagebus")
+      assert result.startswith("messagebus:"), f"unexpected messagebus group entry: {result}"
 
       machine.succeed("test -f /etc/shadow")
     '';

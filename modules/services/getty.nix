@@ -40,7 +40,7 @@
 
       autologinArgs = if options.autologinUser != "" then "--autologin ${options.autologinUser} " else "";
 
-      mkGetty = tty: {
+      ttyUnit = tty: {
         unitName = "getty@${tty}.service";
         unitConfig = {
           Unit = {
@@ -70,7 +70,7 @@
         };
       };
 
-      mkSerialGetty = tty: {
+      serialUnit = tty: {
         unitName = "serial-getty@${tty}.service";
         unitConfig = {
           Unit = {
@@ -97,6 +97,6 @@
       };
     in
     {
-      units = (map mkGetty options.ttys) ++ (map mkSerialGetty options.serialTtys);
+      units = (map ttyUnit options.ttys) ++ (map serialUnit options.serialTtys);
     };
 }

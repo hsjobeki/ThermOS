@@ -17,7 +17,7 @@
       lib = inputs.nixpkgs.lib;
       etcFiles = subscriptions.etc;
 
-      mkEntry =
+      emitEntry =
         f:
         let
           file = pkgs.writeText "etc-${lib.replaceStrings [ "/" ] [ "-" ] f.name}" f.text;
@@ -29,6 +29,6 @@
         '';
     in
     {
-      derivation = pkgs.runCommand "thermos-etc" { } (lib.concatMapStringsSep "\n" mkEntry etcFiles);
+      derivation = pkgs.runCommand "thermos-etc" { } (lib.concatMapStringsSep "\n" emitEntry etcFiles);
     };
 }

@@ -42,9 +42,10 @@
         mkdir -p $out/etc/systemd/system
         if [ -d ${unitsDrv}/etc/systemd/system ]; then
           for f in ${unitsDrv}/etc/systemd/system/*; do
-            ln -s "$f" $out/etc/systemd/system/$(basename "$f")
+            cp -rs "$f" $out/etc/systemd/system/
           done
         fi
+
         # stock default is graphical.target
         ln -s multi-user.target $out/etc/systemd/system/default.target
 
@@ -79,6 +80,25 @@
           fi
         done
         cp --dereference ${etcDrv}/etc/os-release $out/usr/lib/os-release
+
+        # dbus-daemon resolves policy/service dirs relative to /usr/share/dbus-1/.
+        # systemd ships logind/resolved policy files under share/dbus-1/system.d/.
+        mkdir -p $out/usr/share/dbus-1
+        for pkg in ${pkgs.dbus} ${pkgs.systemd}; do
+          if [ -d $pkg/share/dbus-1 ]; then
+            for d in $pkg/share/dbus-1/*; do
+              name=$(basename "$d")
+              if [ -d "$d" ]; then
+                mkdir -p $out/usr/share/dbus-1/$name
+                for f in "$d"/*; do
+                  ln -sf "$f" $out/usr/share/dbus-1/$name/$(basename "$f")
+                done
+              else
+                ln -sf "$d" $out/usr/share/dbus-1/$name
+              fi
+            done
+          fi
+        done
 
         # nspawn needs these dirs to exist
         mkdir -p $out/{proc,sys,dev,run,tmp,var}

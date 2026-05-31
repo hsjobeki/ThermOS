@@ -86,6 +86,17 @@ in
 
     test -e ${rootfsDrv}/bin/bash || { echo "FAIL: /bin/bash missing"; exit 1; }
     test -e ${rootfsDrv}/bin/systemctl || { echo "FAIL: /bin/systemctl missing"; exit 1; }
+    test -e ${rootfsDrv}/bin/dbus-daemon || { echo "FAIL: /bin/dbus-daemon missing"; exit 1; }
+
+    # dbus stock units
+    test -e ${rootfsDrv}/etc/systemd/system/dbus.service || { echo "FAIL: dbus.service missing"; exit 1; }
+    test -e ${rootfsDrv}/etc/systemd/system/dbus.socket || { echo "FAIL: dbus.socket missing"; exit 1; }
+    test -d ${rootfsDrv}/etc/systemd/system/multi-user.target.wants || { echo "FAIL: multi-user.target.wants missing"; exit 1; }
+    test -e ${rootfsDrv}/etc/systemd/system/multi-user.target.wants/dbus.service || { echo "FAIL: dbus.service not wanted by multi-user"; exit 1; }
+
+    # dbus config
+    test -e ${rootfsDrv}/etc/dbus-1/system.conf || { echo "FAIL: /etc/dbus-1/system.conf missing"; exit 1; }
+    test -d ${rootfsDrv}/usr/share/dbus-1 || test -L ${rootfsDrv}/usr/share/dbus-1 || { echo "FAIL: /usr/share/dbus-1 missing"; exit 1; }
 
     for dir in proc sys dev run tmp; do
       test -d ${rootfsDrv}/$dir || { echo "FAIL: /$dir missing"; exit 1; }
