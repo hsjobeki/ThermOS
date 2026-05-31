@@ -1,8 +1,19 @@
 # Publishers provide [{ unitName, unitConfig }] records.
-# Merge strategy: deep merge by unit name. The merge output is an attrset
-# keyed by unit name, not a list. This is intentional: subscribers look up
-# and overlay units by name, like systemd drop-ins.
+#
+# unitConfig :: { sectionName :: { fieldName :: str | int | [str] } }
+#
+# Mirrors systemd unit file structure. Sections and fields are not
+# hardcoded: new ones work automatically.
+# Merge: deep merge by unit name, like systemd drop-ins.
 { types, ... }:
+let
+  unitValue = types.union [
+    types.str
+    types.int
+    (types.listOf types.str)
+  ];
+  unitSection = types.attrsOf unitValue;
+in
 {
   name = "units";
 
@@ -11,7 +22,7 @@
       type = types.str;
     };
     unitConfig = {
-      type = types.attrs;
+      type = types.attrsOf unitSection;
     };
   };
 
