@@ -1,5 +1,9 @@
-# Any module can publish assertions. The toplevel builder checks them all
-# before producing the system derivation.
+# Publishers provide [{ assertion, message }] records.
+#
+# { assertion :: bool, message :: str }
+#
+# The toplevel builder checks all assertions before producing the
+# system derivation. Merge: concatenation.
 { types, ... }:
 {
   name = "assertions";

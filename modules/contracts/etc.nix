@@ -1,5 +1,9 @@
-# Merge strategy: conflict detection. Two modules writing the same
-# /etc path is an error caught at eval time.
+# Publishers provide [{ name, text, mode?, uid?, gid? }] records.
+#
+# { name :: str, text :: str, mode? :: str, uid? :: int, gid? :: int }
+#
+# Merge: conflict detection. Two publishers writing the same /etc path
+# is an error caught at eval time.
 { types, ... }:
 {
   name = "etc";

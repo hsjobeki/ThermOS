@@ -1,4 +1,8 @@
-# Merge strategy: concatenation. Deduplication happens in buildEnv.
+# Publishers provide [{ package }] records.
+#
+# { package :: derivation }
+#
+# Merge: concatenation. Deduplication happens in buildEnv.
 { types, ... }:
 {
   name = "packages";

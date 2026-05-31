@@ -1,5 +1,9 @@
-# Merge strategy: concatenation. Rules are additive.
-# Conflicts (two rules for the same path) are handled by tmpfiles itself.
+# Publishers provide [{ rule }] records.
+#
+# { rule :: str }
+#
+# Each rule is a tmpfiles.d line (e.g. "d /run/dbus 0755 root root -").
+# Merge: concatenation. Conflicts handled by systemd-tmpfiles itself.
 { types, ... }:
 {
   name = "tmpfiles";

@@ -1,5 +1,8 @@
-# Merge strategy: conflict detection on name and gid.
-# Two modules declaring the same group name or gid is an error.
+# Publishers provide [{ name, gid, members? }] records.
+#
+# { name :: str, gid :: int, members? :: [str] }
+#
+# Merge: conflict detection on name and gid.
 { types, ... }:
 {
   name = "groups";

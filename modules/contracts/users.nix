@@ -1,5 +1,9 @@
-# Merge strategy: conflict detection on name and uid.
-# Two modules declaring the same username or uid is an error.
+# Publishers provide [{ name, uid, gid, home?, shell?, gecos? }] records.
+#
+# { name :: str, uid :: int, gid :: int,
+#   home? :: str, shell? :: str, gecos? :: str }
+#
+# Merge: conflict detection on name and uid.
 { types, ... }:
 {
   name = "users";
