@@ -4,6 +4,11 @@ import ../default.nix {
       # Password: thermos
       rootHashedPassword = "$6$thermos$H0ll22GovTVsmgXyGSxBB1rAwU.QF6D/nFspidCXj0vFJ6YzUUzhs1r8/mEiXnb0IUUP8t2tChAmwA.vEXH9G/";
     };
+    "/services/getty" = {
+      ttys = [ ];
+      serialTtys = [ "ttyS0" ];
+      autologinUser = "root";
+    };
     "/services/openssh" = {
       authorizedKeys = {
         root = [
