@@ -164,7 +164,9 @@
       ];
 
       tmpfiles = [
+        { rule = "d /root 0700 root root -"; }
         { rule = "d /var/log 0755 root root -"; }
+        { rule = "d /var/empty 0555 root root -"; }
         { rule = "d /var/tmp 1777 root root 30d"; }
         { rule = "d /tmp 1777 root root -"; }
         { rule = "d /run 0755 root root -"; }
