@@ -1209,6 +1209,7 @@ in
         home = "/var/empty";
         shell = "/bin/nologin";
         gecos = "SSH privilege separation user";
+        hashedPassword = "!";
       };
     };
 

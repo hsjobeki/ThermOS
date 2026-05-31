@@ -1,7 +1,7 @@
-# Publishers provide [{ name, uid, gid, home?, shell?, gecos? }] records.
+# Publishers provide [{ name, uid, gid, home?, shell?, gecos?, hashedPassword? }] records.
 #
 # { name :: str, uid :: int, gid :: int,
-#   home? :: str, shell? :: str, gecos? :: str }
+#   home? :: str, shell? :: str, gecos? :: str, hashedPassword? :: str }
 #
 # Merge: conflict detection on name and uid.
 { types, ... }:
@@ -29,6 +29,12 @@
     gecos = {
       type = types.str;
       default = "";
+    };
+    # "!" = locked, "" = empty password, crypt(3) hash = password set.
+    # WARNING: ends up in a world-readable nix store derivation.
+    hashedPassword = {
+      type = types.str;
+      default = "!";
     };
   };
 

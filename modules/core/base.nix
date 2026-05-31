@@ -7,6 +7,10 @@
       type = types.str;
       default = "thermos";
     };
+    rootHashedPassword = {
+      type = types.str;
+      default = "!";
+    };
   };
 
   inputs = {
@@ -164,6 +168,8 @@
         { rule = "d /var/tmp 1777 root root 30d"; }
         { rule = "d /tmp 1777 root root -"; }
         { rule = "d /run 0755 root root -"; }
+        # nix store normalizes all files to 0444; fix at boot
+        { rule = "z /etc/shadow 0640 root root -"; }
       ];
 
       users = [
@@ -174,6 +180,7 @@
           home = "/root";
           shell = "/bin/sh";
           gecos = "System administrator";
+          hashedPassword = options.rootHashedPassword;
         }
         {
           name = "nobody";

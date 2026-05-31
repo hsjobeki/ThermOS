@@ -1,6 +1,6 @@
 # passwd: name:x:uid:gid:gecos:home:shell
 # group:  name:x:gid:members
-# shadow: name:!:1:::::
+# shadow: name:hashedPassword:lastchanged:::::
 { types, ... }:
 {
   name = "users-builder";
@@ -32,8 +32,7 @@
 
       groupLine = g: "${g.name}:x:${toString g.gid}:${builtins.concatStringsSep "," g.members}";
 
-      # Locked account, no password aging
-      shadowLine = u: "${u.name}:!:1::::::";
+      shadowLine = u: "${u.name}:${u.hashedPassword}:1::::::";
 
       passwdFile = pkgs.writeText "passwd" (lib.concatMapStringsSep "\n" passwdLine sortedUsers + "\n");
       groupFile = pkgs.writeText "group" (lib.concatMapStringsSep "\n" groupLine sortedGroups + "\n");
