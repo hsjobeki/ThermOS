@@ -19,11 +19,15 @@ let
     path:
     let
       mod = import path { inherit types; };
+      inputPaths = builtins.filter (p: p != "/nixpkgs") (
+        builtins.map (i: mod.inputs.${i}.path) (builtins.attrNames (mod.inputs or { }))
+      );
     in
     {
       name = mod.name or (builtins.baseNameOf path);
       publish = mod.publish or [ ];
       subscribe = mod.subscribe or [ ];
+      inputs = inputPaths;
     };
 
   # Scan a directory for .nix files and extract metadata from each
