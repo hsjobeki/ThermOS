@@ -182,6 +182,12 @@
     font-size: 0.78em;
   }
 
+  .flow-box[data-layer="middleware"] .flow-item::before {
+    content: "\21C4\00a0";
+    color: var(--fg2);
+    font-size: 0.78em;
+  }
+
   .flow-arrow {
     display: flex;
     flex-direction: column;
@@ -274,110 +280,149 @@
 
 <h2>How it works</h2>
 
-<div class="flow" id="flow">
-  <div class="flow-box" data-layer="modules">
-    <h3>Modules</h3>
-    <div class="flow-items">
-      <span class="flow-item" data-contracts="users files packages services">base: root user, shell, hostname, PAM</span>
-      <span class="flow-item" data-contracts="services files">getty: login console</span>
-      <span class="flow-item" data-contracts="services users files">ssh: remote access</span>
-    </div>
-  </div>
+<div class="flow" id="flow"></div>
 
-  <div class="flow-arrow"><div class="arrow-line"></div><span class="arrow-label">publish</span><span class="arrow-head">▼</span></div>
-
-  <div class="flow-box" data-layer="contracts">
-    <h3>Contracts</h3>
-    <div class="flow-items">
-      <span class="flow-item" data-id="users">users</span>
-      <span class="flow-item" data-id="files">files</span>
-      <span class="flow-item" data-id="packages">packages</span>
-      <span class="flow-item" data-id="services">services</span>
-    </div>
-  </div>
-
-  <div class="flow-arrow"><div class="arrow-line"></div><span class="arrow-label">subscribe</span><span class="arrow-head">▼</span></div>
-
-  <div class="flow-box" data-layer="builders">
-    <h3>Builders</h3>
-    <div class="flow-items">
-      <span class="flow-item" data-contracts="users">/etc/passwd, /etc/group</span>
-      <span class="flow-item" data-contracts="files">/etc/hostname, /etc/pam.d/</span>
-      <span class="flow-item" data-contracts="packages">/usr/bin/</span>
-      <span class="flow-item" data-contracts="services">/etc/systemd/system/</span>
-    </div>
-  </div>
-
-  <div class="flow-arrow"><div class="arrow-line"></div><span class="arrow-head">▼</span></div>
-
-  <div class="flow-box" data-layer="system">
-    <h3>System</h3>
-    <div class="flow-items">
-      <span class="flow-item">Bootable root filesystem</span>
-    </div>
-  </div>
-</div>
+<script id="flow-data" type="application/json">
+{"builders":[{"name":"etc-builder","publish":[],"subscribe":["/contracts/etc"]},{"name":"packages-builder","publish":[],"subscribe":["/contracts/packages"]},{"name":"rootfs-builder","publish":[],"subscribe":[]},{"name":"tmpfiles-builder","publish":[],"subscribe":["/contracts/tmpfiles"]},{"name":"toplevel-builder","publish":[],"subscribe":["/contracts/assertions"]},{"name":"units-builder","publish":[],"subscribe":["/contracts/units"]},{"name":"users-builder","publish":[],"subscribe":["/contracts/users","/contracts/groups"]}],"contracts":[{"name":"assertions","publish":[],"subscribe":[]},{"name":"etc","publish":[],"subscribe":[]},{"name":"groups","publish":[],"subscribe":[]},{"name":"packages","publish":[],"subscribe":[]},{"name":"pam","publish":[],"subscribe":[]},{"name":"tmpfiles","publish":[],"subscribe":[]},{"name":"units","publish":[],"subscribe":[]},{"name":"users","publish":[],"subscribe":[]}],"middleware":[{"name":"pam","publish":["/contracts/etc"],"subscribe":["/contracts/pam"]}],"modules":[{"name":"base","publish":["/contracts/etc","/contracts/packages","/contracts/tmpfiles","/contracts/users","/contracts/groups","/contracts/pam"],"subscribe":[]},{"name":"dbus","publish":["/contracts/units","/contracts/users","/contracts/groups","/contracts/packages","/contracts/etc","/contracts/tmpfiles"],"subscribe":[]},{"name":"getty","publish":["/contracts/units"],"subscribe":[]},{"name":"openssh","publish":["/contracts/units","/contracts/users","/contracts/groups","/contracts/packages","/contracts/pam","/contracts/etc"],"subscribe":[]}]}
+</script>
 
 <script>
 (function() {
-  var flow = document.getElementById('flow');
-  var items = flow.querySelectorAll('.flow-item');
-  var boxes = flow.querySelectorAll('.flow-box');
 
-  function clear() {
-    items.forEach(function(el) {
-      el.classList.remove('dim', 'highlight');
-    });
-    boxes.forEach(function(el) {
-      el.classList.remove('active');
-    });
+  function contractId(path) {
+    return path.replace('/contracts/', '');
   }
 
-  function highlight(contracts, sourceBox) {
-    items.forEach(function(el) {
-      var box = el.closest('.flow-box');
-      if (box === sourceBox) {
-        el.classList.add('dim');
-        return;
-      }
-      var id = el.dataset.id;
-      var elContracts = el.dataset.contracts;
-      if (!id && !elContracts) return;
-      var match = false;
-      if (id) match = contracts.indexOf(id) !== -1;
-      if (elContracts) {
-        elContracts.split(' ').forEach(function(c) {
-          if (contracts.indexOf(c) !== -1) match = true;
-        });
-      }
-      el.classList.toggle('highlight', match);
-      el.classList.toggle('dim', !match);
-    });
-  }
+  function render(data) {
+    var flow = document.getElementById('flow');
+    var html = '';
 
-  flow.addEventListener('mouseover', function(e) {
-    var item = e.target.closest('.flow-item');
-    if (!item) return;
-    var box = item.closest('.flow-box');
-    var contracts = item.dataset.contracts;
-    var id = item.dataset.id;
-    if (contracts) {
-      item.classList.add('highlight');
-      item.classList.remove('dim');
-      highlight(contracts.split(' '), box);
-      box.classList.add('active');
-    } else if (id) {
-      item.classList.add('highlight');
-      item.classList.remove('dim');
-      highlight([id], box);
-      box.classList.add('active');
+    // Modules
+    html += '<div class="flow-box" data-layer="modules"><h3>Modules</h3><div class="flow-items">';
+    data.modules.forEach(function(m) {
+      var contracts = m.publish.map(contractId).join(' ');
+      html += '<span class="flow-item" data-contracts="' + contracts + '">' + m.name + '</span>';
+    });
+    html += '</div></div>';
+
+    // Arrow: publish
+    html += '<div class="flow-arrow"><div class="arrow-line"></div><span class="arrow-label">publish</span><span class="arrow-head">\u25bc</span></div>';
+
+    // Contracts
+    var allContracts = data.contracts.map(function(c) { return c.name; });
+    html += '<div class="flow-box" data-layer="contracts"><h3>Contracts</h3><div class="flow-items">';
+    allContracts.forEach(function(name) {
+      html += '<span class="flow-item" data-id="' + name + '">' + name + '</span>';
+    });
+    html += '</div></div>';
+
+    // Middleware (if any)
+    if (data.middleware.length > 0) {
+      html += '<div class="flow-arrow"><div class="arrow-line"></div><span class="arrow-label">subscribe</span><span class="arrow-head">\u25bc</span></div>';
+      html += '<div class="flow-box" data-layer="middleware"><h3>Middleware</h3><div class="flow-items">';
+      data.middleware.forEach(function(m) {
+        var subs = m.subscribe.map(contractId).join(' ');
+        var pubs = m.publish.map(contractId).join(' ');
+        html += '<span class="flow-item" data-contracts="' + subs + '" data-publishes="' + pubs + '">' + m.name + '</span>';
+      });
+      html += '</div></div>';
     }
-  });
 
-  flow.addEventListener('mouseout', function(e) {
-    var item = e.target.closest('.flow-item');
-    if (item) clear();
-  });
+    // Arrow: subscribe/publish to builders
+    html += '<div class="flow-arrow"><div class="arrow-line"></div><span class="arrow-label">subscribe</span><span class="arrow-head">\u25bc</span></div>';
+
+    // Builders
+    html += '<div class="flow-box" data-layer="builders"><h3>Builders</h3><div class="flow-items">';
+    data.builders.forEach(function(b) {
+      if (b.subscribe.length === 0) return;
+      var contracts = b.subscribe.map(contractId).join(' ');
+      html += '<span class="flow-item" data-contracts="' + contracts + '">' + b.name + '</span>';
+    });
+    html += '</div></div>';
+
+    // Arrow: to system
+    html += '<div class="flow-arrow"><div class="arrow-line"></div><span class="arrow-label">assemble</span><span class="arrow-head">\u25bc</span></div>';
+
+    // System
+    html += '<div class="flow-box" data-layer="system"><h3>System</h3><div class="flow-items">';
+    html += '<span class="flow-item">Bootable root filesystem</span>';
+    html += '</div></div>';
+
+    flow.innerHTML = html;
+  }
+
+  function bindInteraction() {
+    var flow = document.getElementById('flow');
+
+    function clear() {
+      flow.querySelectorAll('.flow-item').forEach(function(el) {
+        el.classList.remove('dim', 'highlight');
+      });
+      flow.querySelectorAll('.flow-box').forEach(function(el) {
+        el.classList.remove('active');
+      });
+    }
+
+    function highlight(contracts, sourceBox) {
+      flow.querySelectorAll('.flow-item').forEach(function(el) {
+        var box = el.closest('.flow-box');
+        if (box === sourceBox) {
+          el.classList.add('dim');
+          return;
+        }
+        var id = el.dataset.id;
+        var elContracts = el.dataset.contracts;
+        var elPublishes = el.dataset.publishes;
+        if (!id && !elContracts && !elPublishes) return;
+        var match = false;
+        if (id) match = contracts.indexOf(id) !== -1;
+        if (elContracts) {
+          elContracts.split(' ').forEach(function(c) {
+            if (contracts.indexOf(c) !== -1) match = true;
+          });
+        }
+        if (elPublishes) {
+          elPublishes.split(' ').forEach(function(c) {
+            if (contracts.indexOf(c) !== -1) match = true;
+          });
+        }
+        el.classList.toggle('highlight', match);
+        el.classList.toggle('dim', !match);
+      });
+    }
+
+    flow.addEventListener('mouseover', function(e) {
+      var item = e.target.closest('.flow-item');
+      if (!item) return;
+      var box = item.closest('.flow-box');
+      var contracts = item.dataset.contracts;
+      var publishes = item.dataset.publishes;
+      var id = item.dataset.id;
+      var all = [];
+      if (contracts) all = all.concat(contracts.split(' '));
+      if (publishes) all = all.concat(publishes.split(' '));
+      if (all.length > 0) {
+        item.classList.add('highlight');
+        item.classList.remove('dim');
+        highlight(all, box);
+        box.classList.add('active');
+      } else if (id) {
+        item.classList.add('highlight');
+        item.classList.remove('dim');
+        highlight([id], box);
+        box.classList.add('active');
+      }
+    });
+
+    flow.addEventListener('mouseout', function(e) {
+      var item = e.target.closest('.flow-item');
+      if (item) clear();
+    });
+  }
+
+  var data = JSON.parse(document.getElementById('flow-data').textContent);
+  render(data);
+  bindInteraction();
 })();
 </script>
 
