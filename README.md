@@ -84,23 +84,10 @@ It will be extended further to proof it can solve the stated problems.
 
 ### Roadmap
 
-**System infrastructure**
-
-- [ ] D-Bus, OpenSSH
-- [ ] Kernel, initrd, boot
-- [ ] Disk image builder (repart)
-- [ ] System switch (rebuild + reload)
-- [ ] Secure Boot / measured boot
-- [ ] Opinionated system defaults (Niri vs. Gnome etc.)
-
-**Configuration interface** (under research)
-
-- [ ] Define user-facing options
-- [ ] JSON schema export for module interfaces
-- [ ] Configuration persistence (declarative, GUI-writable format)
-- [ ] Rebuild + apply pipeline (the system is immutable, so changes require a rebuild)
-- [ ] CLI for system configuration
-- [ ] GUI (gtk like libadwaita? Something rust based?)
+- Boot a real system with its own kernel, initrd, and boot chain
+- Immutable, cryptographically verified disk images
+- Live system management: rebuild, switch, rollback
+- Configuration interface with CLI and GUI
 
 ThermOS has the benefit of a proper user model from day one.
 
