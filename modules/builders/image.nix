@@ -2,7 +2,7 @@
 # Uses mkfs.ext4 -d (no root/mount/loop required, runs in nix sandbox).
 { types, ... }:
 {
-  name = "image-builder";
+  name = "image";
 
   inputs = {
     nixpkgs = {

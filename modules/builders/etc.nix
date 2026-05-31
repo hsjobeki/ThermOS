@@ -1,6 +1,6 @@
 { types, ... }:
 {
-  name = "etc-builder";
+  name = "etc";
 
   subscribe = [ "/contracts/etc" ];
 

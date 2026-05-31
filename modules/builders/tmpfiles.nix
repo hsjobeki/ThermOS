@@ -1,6 +1,6 @@
 { types, ... }:
 {
-  name = "tmpfiles-builder";
+  name = "tmpfiles";
 
   subscribe = [ "/contracts/tmpfiles" ];
 

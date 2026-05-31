@@ -1,6 +1,6 @@
 { types, ... }:
 {
-  name = "toplevel-builder";
+  name = "toplevel";
 
   subscribe = [ "/contracts/assertions" ];
 

@@ -2,7 +2,7 @@
 # Loads virtio + ext4 modules, mounts root, switch_root to real rootfs.
 { types, ... }:
 {
-  name = "initrd-builder";
+  name = "initrd";
 
   inputs = {
     nixpkgs = {

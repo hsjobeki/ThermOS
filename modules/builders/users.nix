@@ -3,7 +3,7 @@
 # shadow: name:hashedPassword:lastchanged:::::
 { types, ... }:
 {
-  name = "users-builder";
+  name = "users";
 
   subscribe = [
     "/contracts/users"

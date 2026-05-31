@@ -1,6 +1,6 @@
 { types, ... }:
 {
-  name = "rootfs-builder";
+  name = "rootfs";
 
   inputs = {
     nixpkgs = {

@@ -1,6 +1,6 @@
 { types, ... }:
 {
-  name = "units-builder";
+  name = "units";
 
   subscribe = [ "/contracts/units" ];
 
