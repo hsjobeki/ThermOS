@@ -2,7 +2,7 @@
 
 Think: NixOS meets macOS.
 
-A declarative Linux system. Easy to use, joyful to configure.
+A declarative Linux system. Easy to use, intuitive to configure.
 
 > [!NOTE]
 > Under active research. Contributions welcome
@@ -19,9 +19,9 @@ no user should ever touch.
 
 ThermOS draws that boundary. Module options that face users are separated
 from the internal wiring that modules use to talk to each other. This
-makes a real configuration interface possible. Not a code editor, but
-something closer to GNOME Settings, where enabling SSH or adding a user
-just works.
+makes a real configuration interface possible. Something like GNOME
+Settings, where enabling SSH or adding a user goes through the same
+deterministic layers that Nix users rely on today.
 
 ## For engineers
 
