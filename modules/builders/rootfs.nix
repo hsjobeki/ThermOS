@@ -32,9 +32,11 @@
         ln -s ${systemdBin} $out/sbin/init
 
         mkdir -p $out/etc
-        for f in ${etcDrv}/etc/*; do
-          ln -s "$f" $out/etc/$(basename "$f")
-        done
+        cp -rs ${etcDrv}/etc/* $out/etc/
+        # cp -rs copies source directory permissions (read-only from the store).
+        # The builder adds files into $out/etc and its subdirectories below,
+        # so every directory in the tree needs write access.
+        find $out/etc -type d -exec chmod u+w {} +
 
         # Empty machine-id. Must be exactly 0 bytes or nspawn rejects it.
         truncate -s 0 $out/etc/machine-id
@@ -44,10 +46,22 @@
           for f in ${unitsDrv}/etc/systemd/system/*; do
             cp -rs "$f" $out/etc/systemd/system/
           done
+          # .wants dirs from the units builder may receive more symlinks below
+          # (e.g. networkd enablement), so they need write access.
+          find $out/etc/systemd/system -name '*.wants' -type d -exec chmod u+w {} +
         fi
 
         # stock default is graphical.target
         ln -s multi-user.target $out/etc/systemd/system/default.target
+
+        # Enable stock systemd-networkd when .network config files are present.
+        # The stock unit at /usr/lib/systemd/system/ has proper sandboxing,
+        # capabilities, and socket activation that a custom unit would lack.
+        if [ -d $out/etc/systemd/network ]; then
+          mkdir -p $out/etc/systemd/system/multi-user.target.wants
+          ln -s /usr/lib/systemd/system/systemd-networkd.service \
+            $out/etc/systemd/system/multi-user.target.wants/systemd-networkd.service
+        fi
 
         if [ -d ${tmpfilesDrv}/etc/tmpfiles.d ]; then
           ln -s ${tmpfilesDrv}/etc/tmpfiles.d $out/etc/tmpfiles.d
