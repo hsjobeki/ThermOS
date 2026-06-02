@@ -24,7 +24,11 @@
       derivation =
         pkgs.runCommand "thermos-image"
           {
-            nativeBuildInputs = [ pkgs.e2fsprogs ];
+            nativeBuildInputs = [
+              pkgs.e2fsprogs
+              pkgs.fakeroot
+              pkgs.libfaketime
+            ];
           }
           ''
             mkdir -p ./rootImage/nix/store
@@ -49,7 +53,17 @@
             fi
 
             truncate -s "$bytes" $out
-            mkfs.ext4 -L thermos -d ./rootImage $out
+
+            # fakeroot so mke2fs records uid/gid 0 for every file. The nix build
+            # user is non-root, so cp -a copies the store owned by the build uid.
+            # sshd StrictModes refuses authorized_keys not owned by root or the
+            # target user, which breaks key auth from a baked image.
+            # faketime pins inode timestamps for reproducibility; fixed UUID
+            # eliminates another source of non-determinism.
+            faketime -f "1970-01-01 00:00:01" fakeroot mkfs.ext4 \
+              -L thermos -U 44444444-4444-4444-8888-888888888888 \
+              -d ./rootImage $out
+
             resize2fs -M $out
             new_size=$(dumpe2fs -h $out 2>/dev/null | awk -F: \
               '/Block count/{count=$2} /Block size/{size=$2} END{print (count*size+16*2^20)/size}')
