@@ -190,4 +190,84 @@ in
       assert "PAM auth ok" in result, f"Auth failed:\n{result}"
     '';
   };
+
+  sshLogin =
+    let
+      sshKeys = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
+      sshThermos = import ../default.nix {
+        options = {
+          "/services/networkd" = {
+            enable = true;
+            useDHCP = false;
+            addresses = [ "192.168.1.2/24" ];
+          };
+          "/services/openssh" = {
+            permitRootLogin = "prohibit-password";
+            authorizedKeys = {
+              root = [ sshKeys.snakeOilEd25519PublicKey ];
+            };
+          };
+          "/services/getty" = {
+            ttys = [ ];
+            serialTtys = [ ];
+          };
+        };
+      };
+      kernel = sshThermos.kernel;
+      initrd = sshThermos.initrd;
+      image = sshThermos.image;
+    in
+    pkgs.testers.runNixOSTest {
+      name = "thermos-ssh-login";
+
+      nodes.client =
+        { pkgs, ... }:
+        {
+          environment.systemPackages = [ pkgs.openssh ];
+          virtualisation.vlans = [ 1 ];
+        };
+
+      testScript = ''
+        start_all()
+
+        client.wait_for_unit("multi-user.target")
+
+        client.succeed("mkdir -p /root/.ssh && chmod 700 /root/.ssh")
+        client.succeed("cp ${sshKeys.snakeOilEd25519PrivateKey} /root/.ssh/id_ed25519")
+        client.succeed("chmod 600 /root/.ssh/id_ed25519")
+
+        thermos = create_machine(
+            start_command="${pkgs.qemu_kvm}/bin/qemu-system-x86_64"
+            " -m 512 -enable-kvm"
+            " -kernel ${kernel}/bzImage"
+            " -initrd ${initrd}/initrd"
+            " -append 'root=/dev/vda console=ttyS0 loglevel=4'"
+            " -drive file=${image},if=virtio,format=raw,snapshot=on"
+            " -netdev vde,id=vlan1,sock=$QEMU_VDE_SOCKET_1"
+            " -device virtio-net-pci,netdev=vlan1,mac=52:54:00:12:01:02",
+            name="thermos"
+        )
+        thermos.start()
+
+        ssh_opts = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5"
+        try:
+            client.wait_until_succeeds(
+                f"ssh {ssh_opts} root@192.168.1.2 true",
+                timeout=120
+            )
+
+            result = client.succeed(f"ssh {ssh_opts} root@192.168.1.2 cat /etc/hostname")
+            assert "thermos" in result, f"unexpected hostname: {result}"
+
+            result = client.succeed(f"ssh {ssh_opts} root@192.168.1.2 whoami")
+            assert "root" in result, f"unexpected user: {result}"
+        finally:
+            # crash() quits QEMU via the host-side monitor. shutdown() sends
+            # poweroff to a guest shell backdoor ThermOS does not run, and
+            # graceful poweroff needs polkit/logind, so it would hang.
+            # create_machine VMs are not registered in the driver's self.machines,
+            # so the driver will not auto-clean them on failure.
+            thermos.crash()
+      '';
+    };
 }
