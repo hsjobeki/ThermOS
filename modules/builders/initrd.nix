@@ -16,6 +16,7 @@
       default = [
         "virtio_blk"
         "virtio_pci"
+        "virtio_net"
         "ext4"
       ];
     };

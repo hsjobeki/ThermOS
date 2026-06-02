@@ -42,6 +42,7 @@ if [[ "$MODE" == "qemu" ]]; then
   echo ""
   echo "  ThermOS - QEMU boot"
   echo "  Login:  root / thermos"
+  echo "  SSH:    ssh -p 2222 root@localhost"
   echo "  Stop:   Ctrl-a x"
   echo ""
 
@@ -52,6 +53,8 @@ if [[ "$MODE" == "qemu" ]]; then
     -initrd "$INITRD/initrd" \
     -append "root=/dev/vda console=ttyS0 loglevel=4" \
     -drive "file=$WORKDIR/disk.img,if=virtio,format=raw" \
+    -netdev user,id=net0,hostfwd=tcp:127.0.0.1:2222-10.0.2.15:22 \
+    -device virtio-net-pci,netdev=net0 \
     -m 512 \
     -smp 2 \
     -enable-kvm
