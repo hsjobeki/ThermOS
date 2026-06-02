@@ -67,11 +67,24 @@ Requires Nix. Container boot needs `systemd-nspawn`, QEMU boot needs
 
 ```
 ./run.sh              # nspawn container
-./run.sh --qemu       # QEMU VM (serial console)
+./run.sh --qemu       # QEMU VM (serial console + SSH on :2222)
 ./run.sh --shell      # root shell without systemd
 ```
 
 Login: `root` / `thermos`. Stop nspawn: `poweroff`. Stop QEMU: `Ctrl-a x`.
+
+### SSH in (QEMU)
+
+`./run.sh --qemu` forwards host port 2222 to the VM's sshd. Root login is
+key-only; the authorized key is in `systems/qemu.nix`. Swap in your own key
+(`~/.ssh/id_ed25519.pub`).
+
+```
+ssh -p 2222 root@localhost
+```
+
+The VM uses a static `10.0.2.15/24` because DHCP needs AF_PACKET, which the
+kernel does not load yet.
 
 ## Status
 
@@ -83,9 +96,14 @@ nspawn containers and QEMU VMs with direct kernel boot.
 - [x] Contract-based module system with pub/sub data flow
 - [x] Boot in nspawn container (systemd, PAM, SSH, D-Bus)
 - [x] Boot in QEMU with kernel, initrd, and ext4 disk image
-- [ ] Secret provisioning (host keys, credentials outside the root image)
-- [ ] Immutable, cryptographically verified disk images (UKI, dm-verity)
+- [x] SSH login verified end-to-end in a VM
+- [ ] Boot on real hardware (UEFI, firmware, microcode, disk encryption)
 - [ ] Live system management: rebuild, switch, rollback
+- [ ] A Wayland desktop on the same verified base
+- [ ] Secret and state provisioning outside the root image
+- [ ] Immutable, cryptographically verified images (UKI, dm-verity, Secure Boot)
+- [ ] Atomic A/B updates with rollback
+- [ ] Settings-style configuration UI over the contract layer
 
 ## Layout
 

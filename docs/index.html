@@ -434,17 +434,25 @@
 <pre><code>git clone https://github.com/hsjobeki/thermos
 cd thermos
 ./run.sh          # nspawn container
-./run.sh --qemu   # QEMU VM (serial console)</code></pre>
+./run.sh --qemu   # QEMU VM (serial console + SSH on :2222)</code></pre>
 <p>Login: <code>root</code> / <code>thermos</code>. Stop nspawn: <code>poweroff</code>. Stop QEMU: <code>Ctrl-a x</code>.</p>
+
+<p>SSH into the QEMU VM. Root login is key-only; the authorized key is in <code>systems/qemu.nix</code> (swap in your own).</p>
+<pre><code>ssh -p 2222 root@localhost</code></pre>
 
 <h2>Roadmap</h2>
 <ul>
   <li><s>Contract-based module system with pub/sub data flow</s></li>
   <li><s>Boot in nspawn container with systemd, PAM, SSH, D-Bus</s></li>
   <li><s>Boot in QEMU with kernel, initrd, and ext4 disk image</s></li>
-  <li>Secret provisioning (host keys, credentials outside the root image)</li>
-  <li>Immutable, cryptographically verified disk images (UKI, dm-verity)</li>
+  <li><s>SSH login verified end-to-end in a VM</s></li>
+  <li>Boot on real hardware (UEFI, firmware, microcode, disk encryption)</li>
   <li>Live system management: rebuild, switch, rollback</li>
+  <li>A Wayland desktop on the same verified base</li>
+  <li>Secret and state provisioning outside the root image</li>
+  <li>Immutable, cryptographically verified images (UKI, dm-verity, Secure Boot)</li>
+  <li>Atomic A/B updates with rollback</li>
+  <li>Settings-style configuration UI over the contract layer</li>
 </ul>
 
 <footer>
