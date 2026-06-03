@@ -21,6 +21,7 @@
     "/contracts/etc"
     "/contracts/users"
     "/contracts/groups"
+    "/contracts/assertions"
   ];
 
   impl =
@@ -47,6 +48,7 @@
         etc = [ ];
         users = [ ];
         groups = [ ];
+        assertions = [ ];
       }
     else
       {
@@ -75,6 +77,19 @@
           {
             name = "systemd/network/80-wired.network";
             text = networkFile;
+          }
+        ];
+        # We do not yet support dhcp.
+        # Therefore static-ip needs to be configured.
+        # TODO: Adopt these assertions, when dhcp support is added
+        assertions = [
+          {
+            assertion = options.useDHCP || options.addresses != [ ];
+            message = "networkd: addresses must be statically configured when dhcp is disabled";
+          }
+          {
+            assertion = !options.useDHCP;
+            message = "networkd: dhcp is not yet implemented";
           }
         ];
       };

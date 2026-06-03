@@ -928,6 +928,66 @@ in
         (head impl.users).name;
       expected = "systemd-network";
     };
+
+    testDhcpGuardAssertionFails = {
+      expr =
+        let
+          impl = ev.modules.services.modules.networkd {
+            enable = true;
+            useDHCP = true;
+          };
+        in
+        all (a: a.assertion) impl.assertions;
+      expected = false;
+    };
+
+    testStaticAssertionsPass = {
+      expr =
+        let
+          impl = ev.modules.services.modules.networkd {
+            enable = true;
+            useDHCP = false;
+            addresses = [ "192.168.1.2/24" ];
+          };
+        in
+        all (a: a.assertion) impl.assertions;
+      expected = true;
+    };
+
+    testNoAddressAssertionFails = {
+      expr =
+        let
+          impl = ev.modules.services.modules.networkd {
+            enable = true;
+            useDHCP = false;
+            addresses = [ ];
+          };
+        in
+        all (a: a.assertion) impl.assertions;
+      expected = false;
+    };
+
+    testDisabledNoAssertions = {
+      expr = (ev.modules.services.modules.networkd { }).assertions;
+      expected = [ ];
+    };
+
+    testTreeRejectsDhcp = {
+      expr =
+        let
+          configured = import ../default.nix {
+            options = {
+              "/services/networkd" = {
+                enable = true;
+                useDHCP = true;
+              };
+            };
+          };
+        in
+        (configured.evaluated.modules.builders.modules.toplevel { }).derivation;
+      expectedError.type = "ThrownError";
+      expectedError.msg = "Assertion failed: networkd: dhcp is not yet implemented";
+    };
   };
 
   # services
