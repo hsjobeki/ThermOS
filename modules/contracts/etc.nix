@@ -1,6 +1,6 @@
-# Publishers provide [{ name, text, mode?, uid?, gid? }] records.
+# Publishers provide [{ name, text }] records.
 #
-# { name :: str, text :: str, mode? :: str, uid? :: int, gid? :: int }
+# { name :: str, text :: str }
 #
 # Merge: conflict detection. Two publishers writing the same /etc path
 # is an error caught at eval time.
@@ -14,18 +14,6 @@
     };
     text = {
       type = types.str;
-    };
-    mode = {
-      type = types.str;
-      default = "0444";
-    };
-    uid = {
-      type = types.int;
-      default = 0;
-    };
-    gid = {
-      type = types.int;
-      default = 0;
     };
   };
 

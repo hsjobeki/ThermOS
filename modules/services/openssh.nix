@@ -56,7 +56,6 @@
         builtins.mapAttrs (user: keys: {
           name = "ssh/authorized_keys/${user}";
           text = builtins.concatStringsSep "\n" keys + "\n";
-          mode = "0444";
         }) options.authorizedKeys
       );
     in
@@ -161,7 +160,6 @@
         {
           name = "ssh/sshd_config";
           text = sshdConfig;
-          mode = "0600";
         }
       ]
       ++ authorizedKeyEntries;

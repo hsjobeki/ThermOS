@@ -1368,16 +1368,6 @@ in
       expected = true;
     };
 
-    testSshdConfigMode = {
-      expr =
-        let
-          impl = ev.modules.services.modules.openssh { };
-          cfg = head (filter (e: e.name == "ssh/sshd_config") impl.etc);
-        in
-        cfg.mode;
-      expected = "0600";
-    };
-
     testPam = {
       expr =
         let

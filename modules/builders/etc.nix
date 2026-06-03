@@ -25,7 +25,6 @@
         ''
           mkdir -p $out/etc/$(dirname "${f.name}")
           cp ${file} $out/etc/${f.name}
-          chmod ${f.mode} $out/etc/${f.name}
         '';
     in
     {
