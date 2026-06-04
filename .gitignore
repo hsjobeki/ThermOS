@@ -1,5 +1,6 @@
 .claude
 .omp
+.direnv
 
 result
 result-*
