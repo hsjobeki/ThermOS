@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write # required by magic-nix-cache-action
+
+# Third-party actions are pinned to commit SHAs (supply-chain hygiene). The comment
+# after each SHA records the branch it was taken from; bump deliberately.
+#
+# Nix is installed with the official NixOS/nix-installer-action (experimental upstream).
+# Tools (nix-unit, treefmt, nixfmt) are built from the pinned nixpkgs in lock.json so
+# CI uses the same versions as local development.
+# Derivation caching uses magic-nix-cache-action, backed by the GitHub Actions cache
+# (free, no secrets); it must run after the installer and degrades gracefully on miss.
+
+jobs:
+  # format, eval, and build share an identical Nix setup and differ only in the
+  # command they run, so they are one matrix job. The vm job is separate because it
+  # needs KVM and extra system-features.
+  checks:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: format
+            run: |
+              treefmt=$(nix-build --no-out-link -E '(import ./default.nix {}).pkgs.treefmt')
+              nixfmt=$(nix-build --no-out-link -E '(import ./default.nix {}).pkgs.nixfmt')
+              export PATH="$treefmt/bin:$nixfmt/bin:$PATH"
+              treefmt --no-cache --fail-on-change --on-unmatched=info
+          - name: eval
+            run: |
+              nix_unit=$(nix-build --no-out-link -E '(import ./default.nix {}).pkgs.nix-unit')
+              "$nix_unit/bin/nix-unit" tests/eval.nix
+          - name: build
+            run: nix-build tests/build.nix --no-out-link
+    steps:
+      - uses: actions/checkout@v4
+      - uses: NixOS/nix-installer-action@6b8548fe06acfb0155a50ab5d561accb215764cc # main
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+      - uses: DeterminateSystems/magic-nix-cache-action@14645543c3b214bedad3b9b49775cb042f4c1fc7 # main
+        with:
+          diagnostic-endpoint: ""
+      - name: ${{ matrix.name }}
+        run: ${{ matrix.run }}
+
+  vm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      # ubuntu-latest ships /dev/kvm but the runner user lacks access by default.
+      # The installer may also handle this; the udev rule makes it deterministic.
+      - name: enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: NixOS/nix-installer-action@6b8548fe06acfb0155a50ab5d561accb215764cc # main
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes auto-allocate-uids cgroups
+            auto-allocate-uids = true
+            system-features = nixos-test benchmark big-parallel kvm uid-range
+      - uses: DeterminateSystems/magic-nix-cache-action@14645543c3b214bedad3b9b49775cb042f4c1fc7 # main
+        with:
+          diagnostic-endpoint: ""
+      - name: container tests
+        run: nix-build tests/container.nix --no-out-link
