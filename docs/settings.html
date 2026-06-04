@@ -1,0 +1,2218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThermOS System Settings</title>
+<style>
+  :root {
+    --fg: #1a1a1a;
+    --fg2: #555;
+    --fg3: #888;
+    --bg: #fafaf8;
+    --panel: #ffffff;
+    --panel2: #f3f2ee;
+    --accent: #c04000;
+    --border: #ddd;
+    --code-bg: #f0efeb;
+    --max-w: 980px;
+    --c-instant: #5b7fb0;
+    --c-live:    #2f8f4e;
+    --c-reload:  #1f8a8a;
+    --c-restart: #c47a1a;
+    --c-reboot:  #c0392b;
+    --c-nix:     #7c5cbf;
+    --ok: #2f8f4e;
+    --warn: #c47a1a;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e0ddd8;
+      --fg2: #a09a90;
+      --fg3: #7c766c;
+      --bg: #1a1918;
+      --panel: #242220;
+      --panel2: #2c2a27;
+      --accent: #e86030;
+      --border: #383532;
+      --code-bg: #242220;
+      --c-instant: #7fa0cc;
+      --c-live:    #5cc07e;
+      --c-reload:  #4fbcbc;
+      --c-restart: #e0a050;
+      --c-reboot:  #e06b5c;
+      --c-nix:     #a080e0;
+      --ok: #5cc07e;
+      --warn: #e0a050;
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    line-height: 1.55;
+    padding: 0;
+  }
+
+  .wrap { max-width: var(--max-w); margin: 0 auto; }
+
+  h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.03em; }
+  h1 span { color: var(--accent); }
+  .tagline { color: var(--fg2); font-size: 1rem; margin: 0.15rem 0 0.1rem; }
+  .crumbs { font-size: 0.85rem; margin-bottom: 1.5rem; }
+  .crumbs a { color: var(--accent); text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+
+  .disclaimer {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    background: var(--panel);
+    border-radius: 6px;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.85rem;
+    color: var(--fg2);
+    margin-bottom: 1.5rem;
+  }
+
+  .app { display: flex; gap: 1.5rem; align-items: flex-start; }
+
+  .sidebar {
+    flex: 0 0 210px;
+    position: sticky;
+    top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .nav-group-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg3);
+    margin: 0.9rem 0 0.3rem 0.5rem;
+  }
+  .nav-item {
+    text-align: left;
+    border: none;
+    background: none;
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.92rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .nav-item:hover { background: var(--panel2); }
+  .nav-item.active { background: var(--accent); color: #fff; }
+  .nav-item .count {
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0.02em 0.45em;
+    min-width: 1.2em;
+    text-align: center;
+  }
+  .nav-item.active .count { background: #fff; color: var(--accent); }
+
+  .pane { flex: 1 1 auto; min-width: 0; }
+  .pane h2 { font-size: 1.25rem; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+  .pane .pane-sub { color: var(--fg2); font-size: 0.9rem; margin-bottom: 1.1rem; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.7rem;
+  }
+  .card.modified { border-color: var(--accent); }
+
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .card-title { font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; }
+  .card-key { font-family: "SF Mono","Fira Code",monospace; font-size: 0.74rem; color: var(--fg3); }
+  .card-blurb { color: var(--fg2); font-size: 0.84rem; margin-top: 0.15rem; }
+  .card-control { margin-top: 0.7rem; }
+
+  .badges { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; }
+
+  .badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-radius: 5px;
+    padding: 0.12em 0.5em;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+  .badge.price { color: #fff; border-color: transparent; }
+  .price-instant { background: var(--c-instant); }
+  .price-live    { background: var(--c-live); }
+  .price-reload  { background: var(--c-reload); }
+  .price-restart { background: var(--c-restart); }
+  .price-reboot  { background: var(--c-reboot); }
+
+  .prov { background: none; }
+  .prov-contract    { color: var(--c-live);   border-color: var(--c-live); }
+  .prov-pipeline    { color: var(--c-restart); border-color: var(--c-restart); }
+  .prov-illustrative{ color: var(--fg3);      border-color: var(--fg3); }
+
+  .modified-dot { color: var(--accent); font-size: 1.2rem; line-height: 0; }
+
+  .why {
+    margin-top: 0.6rem;
+    font-size: 0.82rem;
+  }
+  .why summary { cursor: pointer; color: var(--accent); font-weight: 500; }
+  .why-body { margin-top: 0.5rem; color: var(--fg2); border-top: 1px solid var(--border); padding-top: 0.5rem; }
+  .why-body .row { margin-bottom: 0.3rem; }
+  .why-body code { font-family: "SF Mono","Fira Code",monospace; font-size: 0.8em; background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 3px; }
+  .why-body .cite { font-style: italic; color: var(--fg3); }
+  .derivation { font-family: "SF Mono","Fira Code",monospace; font-size: 0.78rem; background: var(--code-bg); padding: 0.5rem 0.6rem; border-radius: 5px; margin-top: 0.35rem; white-space: pre-wrap; }
+
+  /* Controls */
+  input[type=text], input[type=number], input[type=password], textarea, .taginput {
+    font: inherit;
+    font-size: 0.9rem;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.4rem 0.55rem;
+  }
+  input[type=number] { width: 7rem; }
+  input[type=text], input[type=password] { width: min(100%, 24rem); }
+  textarea { width: 100%; min-height: 4.5rem; font-family: "SF Mono","Fira Code",monospace; font-size: 0.82rem; resize: vertical; }
+
+  .toggle {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    cursor: pointer; border: none; background: none; font: inherit; color: var(--fg);
+  }
+  .toggle .track {
+    width: 40px; height: 23px; border-radius: 12px; background: var(--border);
+    position: relative; transition: background 0.15s;
+  }
+  .toggle.on .track { background: var(--ok); }
+  .toggle .knob {
+    position: absolute; top: 2px; left: 2px; width: 19px; height: 19px;
+    background: #fff; border-radius: 50%; transition: left 0.15s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .toggle.on .knob { left: 19px; }
+  .toggle .state { font-size: 0.85rem; color: var(--fg2); min-width: 2rem; }
+
+  .segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+  .segmented button {
+    border: none; background: var(--bg); color: var(--fg); font: inherit; font-size: 0.85rem;
+    padding: 0.35rem 0.7rem; cursor: pointer; border-right: 1px solid var(--border);
+  }
+  .segmented button:last-child { border-right: none; }
+  .segmented button.sel { background: var(--accent); color: #fff; }
+
+  .tags { display: flex; flex-direction: column; gap: 0.4rem; }
+  .taglist { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .tag {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 5px;
+    padding: 0.15em 0.5em; font-size: 0.82rem; cursor: pointer;
+  }
+  .tag:hover { border-color: var(--c-reboot); color: var(--c-reboot); }
+  .taginput { width: min(100%, 18rem); }
+
+  .select-input {
+    font: inherit; font-size: 0.9rem; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.55rem; min-width: 12rem;
+  }
+
+  .app-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.7rem;
+  }
+  .app-card {
+    display: flex; align-items: center; gap: 0.7rem;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 0.75rem 0.85rem;
+  }
+  .app-card.in-cart { border-color: var(--accent); }
+  .app-avatar {
+    flex: 0 0 auto; width: 42px; height: 42px; border-radius: 10px;
+    background: var(--panel2); color: var(--accent); font-weight: 700; font-size: 1.25rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .app-body { flex: 1 1 auto; min-width: 0; }
+  .app-name { font-weight: 600; font-size: 0.92rem; }
+  .app-blurb { color: var(--fg2); font-size: 0.82rem; }
+  .app-action { flex: 0 0 auto; }
+  .btn.installed { background: var(--panel2); color: var(--fg2); border-color: var(--border); }
+  .btn.pending { background: transparent; color: var(--accent); border-color: var(--accent); }
+
+  /* Tables */
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin: 0.5rem 0 1rem; }
+  th, td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-weight: 600; color: var(--fg2); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  td code { font-family: "SF Mono","Fira Code",monospace; font-size: 0.8em; background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 3px; }
+
+  .panel-block { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+  .panel-block h3 { font-size: 0.95rem; font-weight: 650; margin-bottom: 0.4rem; }
+  .panel-block p { font-size: 0.88rem; color: var(--fg2); margin-bottom: 0.6rem; }
+  .layer { border-left: 3px solid var(--accent); padding: 0.1rem 0 0.1rem 0.7rem; margin-bottom: 0.7rem; }
+  .layer b { color: var(--fg); }
+
+  /* Cart bar */
+  .cartbar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: var(--panel); border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+    padding: 0.7rem 1.25rem; display: none;
+    z-index: 40;
+  }
+  .cartbar.show { display: block; }
+  .cartbar-inner { max-width: var(--max-w); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .cart-summary { font-size: 0.9rem; }
+  .cart-summary b { font-weight: 650; }
+  .cart-actions { display: flex; gap: 0.6rem; align-items: center; }
+  .btn {
+    font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 7px; cursor: pointer;
+    padding: 0.45rem 0.9rem; border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+  }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.ghost:hover { border-color: var(--accent); }
+
+  .conflict-pill { color: var(--c-reboot); font-weight: 600; }
+
+  /* Checkout sheet */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: none; align-items: flex-end; justify-content: center; z-index: 50;
+  }
+  .overlay.show { display: flex; }
+  .sheet {
+    background: var(--bg); width: 100%; max-width: var(--max-w);
+    border-radius: 14px 14px 0 0; max-height: 88vh; overflow-y: auto;
+    padding: 1.25rem 1.4rem 1.5rem;
+  }
+  @media (min-width: 700px) { .overlay { align-items: center; } .sheet { border-radius: 14px; } }
+  .sheet h2 { font-size: 1.3rem; font-weight: 650; margin-bottom: 0.2rem; }
+  .sheet .sub { color: var(--fg2); font-size: 0.88rem; margin-bottom: 1rem; }
+  .receipt-item {
+    border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.8rem; margin-bottom: 0.5rem;
+    background: var(--panel);
+  }
+  .receipt-item .ri-head { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; }
+  .receipt-item .ri-title { font-weight: 600; font-size: 0.92rem; }
+  .receipt-item .ri-diff { font-size: 0.83rem; color: var(--fg2); margin-top: 0.25rem; font-family: "SF Mono","Fira Code",monospace; }
+  .ri-diff .old { color: var(--fg3); }
+  .ri-diff .arrow { color: var(--fg3); }
+  .ri-diff .new { color: var(--ok); }
+
+  .aggregate { background: var(--panel2); border-radius: 10px; padding: 0.9rem 1rem; margin: 0.8rem 0; }
+  .aggregate .big { font-size: 1.05rem; font-weight: 650; display: flex; align-items: center; gap: 0.5rem; }
+  .aggregate ul { list-style: none; margin-top: 0.5rem; font-size: 0.86rem; color: var(--fg2); }
+  .aggregate li { margin-bottom: 0.2rem; }
+  .consequences { margin: 0.6rem 0; }
+  .consequences h4, .diffbox h4 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg2); margin-bottom: 0.3rem; }
+  .diffbox pre { background: var(--code-bg); border-radius: 6px; padding: 0.6rem 0.7rem; font-size: 0.8rem; overflow-x: auto; font-family: "SF Mono","Fira Code",monospace; }
+  .diffbox .add { color: var(--ok); }
+  .field-status { margin-top: 0.6rem; font-size: 0.83rem; }
+  .field-status.applying { display: flex; align-items: center; gap: 0.5rem; color: var(--fg2); }
+  .field-status.error {
+    border-left: 3px solid var(--c-reboot);
+    padding: 0.1rem 0 0.1rem 0.6rem;
+    display: flex; flex-direction: column; gap: 0.15rem;
+  }
+  .field-status.error .fs-msg { color: var(--fg); }
+  .field-status.error .fs-cite { font-style: italic; color: var(--fg3); font-size: 0.78rem; }
+  /* ---- developer mode: nix-owned settings -------------------------------- */
+  .card-nix-managed { border-color: var(--c-nix); }
+  .nix-lock-hint { font-size: 0.76rem; color: var(--fg3); margin-top: 0.4rem; }
+  .nix-lock-hint b { color: var(--c-nix); font-weight: 600; }
+  .prov-nix { color: var(--c-nix); border-color: var(--c-nix); cursor: pointer; }
+  .prov-nix:hover { text-decoration: underline; }
+  .nix-value {
+    font-family: "SF Mono","Fira Code",monospace;
+    font-size: 0.88rem;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.4rem 0.55rem;
+    color: var(--fg);
+    display: inline-block;
+    min-width: 8rem;
+  }
+  .nix-copy {
+    margin-top: 0.55rem;
+    font-size: 0.75rem; font-weight: 500;
+    padding: 0.2rem 0.55rem;
+    color: var(--c-nix); background: none;
+    border-color: color-mix(in srgb, var(--c-nix) 40%, transparent);
+  }
+  .nix-copy:hover { border-color: var(--c-nix); }
+  .nix-copy.copied { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+  .nix-badge { font-size: 0.7rem; color: var(--c-nix); font-family: monospace; margin-left: 0.3rem; }
+  /* mock config editor */
+  .mock-editor { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-family: "SF Mono","Fira Code",monospace; }
+  .mock-editor-tab {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: var(--panel2); padding: 0.45rem 0.7rem;
+    border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--fg2);
+  }
+  .mock-editor-dot { width: 10px; height: 10px; border-radius: 2px; background: var(--c-nix); flex-shrink: 0; }
+  .mock-editor-app { margin-left: auto; font-size: 0.72rem; color: var(--fg3); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mock-editor-body { background: var(--code-bg); padding: 0.5rem 0; font-size: 0.82rem; overflow-x: auto; }
+  .editor-line { display: flex; padding: 0 0.7rem; white-space: pre; }
+  .editor-line .ln { color: var(--fg3); width: 1.6rem; text-align: right; padding-right: 0.9rem; user-select: none; flex-shrink: 0; }
+  .editor-line.active { background: color-mix(in srgb, var(--c-nix) 16%, transparent); }
+  .editor-line.active .ln { color: var(--c-nix); font-weight: 600; }
+  .spinner {
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    display: inline-block; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sheet-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; }
+
+  .pulse { animation: pulse 0.9s ease; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); }
+    100% { box-shadow: 0 0 0 14px transparent; }
+  }
+  .applied-tag {
+    font-size: 0.78rem; color: var(--ok); font-weight: 600; margin-left: 0.5rem;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .applied-tag.show { opacity: 1; }
+
+  footer { margin-top: 2.5rem; padding-top: 1.2rem; border-top: 1px solid var(--border); color: var(--fg2); font-size: 0.82rem; }
+  footer a { color: var(--fg2); }
+
+  /* ---- OS shell ---------------------------------------------------------- */
+  .os {
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 20% 30%, #5c83a8 0%, #2e4a6e 60%, #1a2d42 100%);
+    display: flex;
+    flex-direction: column;
+  }
+  .topbar {
+    flex: 0 0 auto;
+    height: 2rem;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.75rem;
+    color: rgba(255,255,255,0.92);
+    font-size: 0.82rem;
+    font-weight: 500;
+    position: relative;
+    z-index: 200;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 1rem; }
+  .topbar-left .os-name { font-weight: 700; letter-spacing: -0.01em; }
+  .topbar-right { display: flex; align-items: center; gap: 0.9rem; }
+  .topbar-clock { font-variant-numeric: tabular-nums; }
+  .sysmenu-trigger {
+    background: none; border: none; color: inherit; font: inherit;
+    cursor: pointer; padding: 0; display: flex; align-items: center; gap: 0.35rem;
+    opacity: 0.9; font-size: 0.88rem;
+  }
+  .sysmenu-trigger:hover { opacity: 1; }
+  .sysmenu-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    display: none;
+  }
+  .sysmenu-dot.show { display: inline-block; }
+  .sysmenu-dropdown {
+    position: absolute; top: calc(2rem + 4px); right: 0.5rem;
+    background: rgba(28,26,24,0.94);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; padding: 0.4rem 0; min-width: 240px;
+    display: none; z-index: 300;
+    color: rgba(255,255,255,0.92); font-size: 0.86rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .sysmenu-dropdown.show { display: block; }
+  .sysmenu-item { padding: 0.38rem 1rem; cursor: pointer; }
+  .sysmenu-item:hover { background: rgba(255,255,255,0.12); }
+  .sysmenu-item.disabled { opacity: 0.4; cursor: default; }
+  .sysmenu-sep { height: 1px; background: rgba(255,255,255,0.12); margin: 0.3rem 0; }
+  .sysmenu-staged {
+    padding: 0.5rem 0.8rem; margin: 0.25rem 0.4rem;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 7px;
+  }
+  .sysmenu-staged-title {
+    font-weight: 650; color: rgba(255,255,255,0.92); margin-bottom: 0.3rem; font-size: 0.82rem;
+  }
+  .sysmenu-staged-list {
+    font-size: 0.78rem; color: rgba(255,255,255,0.65); margin-bottom: 0.5rem;
+    list-style: none; padding: 0;
+  }
+  .sysmenu-staged-list li { padding: 0.1rem 0; }
+  .sysmenu-btn-row { display: flex; gap: 0.4rem; }
+  .sysmenu-btn {
+    font: inherit; font-size: 0.78rem; font-weight: 600;
+    border-radius: 5px; cursor: pointer; padding: 0.3rem 0.65rem;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.92);
+  }
+  .sysmenu-btn:hover { background: rgba(255,255,255,0.2); }
+  .sysmenu-btn.accent { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .sysmenu-btn.accent:hover { filter: brightness(1.08); }
+  .desktop-area {
+    flex: 1 1 auto; display: flex;
+    align-items: flex-start; justify-content: center;
+    padding: 2rem 1.25rem 5rem;
+  }
+  .window {
+    background: var(--bg); border-radius: 14px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+    width: 100%; max-width: var(--max-w);
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .window.devmode-active {
+    box-shadow: 0 24px 80px rgba(0,0,0,0.55), inset 0 0 0 2px var(--c-nix);
+  }
+  .devmode-bar {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: color-mix(in srgb, var(--c-nix) 14%, var(--panel));
+    border-bottom: 1px solid color-mix(in srgb, var(--c-nix) 40%, transparent);
+    color: var(--c-nix); font-size: 0.76rem; font-weight: 500;
+    padding: 0.35rem 0.85rem; flex-shrink: 0;
+  }
+  .devmode-bar-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-nix); flex-shrink: 0; }
+  .window-chrome {
+    background: var(--panel2); border-bottom: 1px solid var(--border);
+    padding: 0.6rem 0.85rem;
+    display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0;
+  }
+  .traffic-lights { display: flex; gap: 0.45rem; }
+  .tl {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: none; cursor: default; flex-shrink: 0;
+  }
+  .tl.close  { background: #ff5f57; }
+  .tl.min    { background: #ffbd2e; }
+  .tl.max    { background: #28c840; }
+  .window-title {
+    flex: 1; text-align: center;
+    font-size: 0.86rem; font-weight: 600; color: var(--fg2);
+  }
+  .devmode-toggle {
+    display: inline-flex; align-items: center; gap: 0.45rem; margin-left: auto;
+    border: none; background: none; cursor: pointer; font: inherit;
+    font-size: 0.78rem; color: var(--fg2); user-select: none;
+  }
+  .devmode-toggle .track {
+    width: 34px; height: 20px; border-radius: 11px; background: var(--border);
+    position: relative; transition: background 0.15s; flex-shrink: 0;
+  }
+  .devmode-toggle.on .track { background: var(--c-nix); }
+  .devmode-toggle .knob {
+    position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+    background: #fff; border-radius: 50%; transition: left 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .devmode-toggle.on .knob { left: 16px; }
+  .devmode-toggle.on { color: var(--c-nix); font-weight: 600; }
+  .window-content {
+    padding: 1.5rem 1.25rem 2.5rem;
+    overflow-y: auto; max-height: calc(100vh - 7rem);
+  }
+
+  /* ---- staged card banner ------------------------------------------------- */
+  .staged-banner {
+    margin-top: 0.7rem; padding: 0.5rem 0.7rem;
+    background: color-mix(in srgb, var(--c-reboot) 8%, var(--bg));
+    border: 1px solid color-mix(in srgb, var(--c-reboot) 35%, transparent);
+    border-radius: 7px; font-size: 0.83rem; color: var(--c-reboot);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.6rem; flex-wrap: wrap;
+  }
+  .staged-banner-msg { font-weight: 600; }
+  .staged-banner-actions { display: flex; gap: 0.45rem; }
+
+  /* ---- toast -------------------------------------------------------------- */
+  .toast-region {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+    z-index: 400; display: flex; flex-direction: column; align-items: center;
+    gap: 0.5rem; pointer-events: none;
+  }
+  .toast {
+    background: rgba(30,28,26,0.92);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    color: rgba(255,255,255,0.92); padding: 0.5rem 0.9rem;
+    border-radius: 20px; font-size: 0.84rem;
+    display: flex; align-items: center; gap: 0.6rem;
+    pointer-events: all;
+    animation: toastIn 0.18s ease;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  }
+  @keyframes toastIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+  .toast-undo {
+    background: none; border: 1px solid rgba(255,255,255,0.35);
+    color: inherit; font: inherit; font-size: 0.78rem;
+    padding: 0.15em 0.55em; border-radius: 4px; cursor: pointer;
+  }
+  .toast-undo:hover { background: rgba(255,255,255,0.15); }
+
+  /* ---- keep-changes countdown --------------------------------------------- */
+  .countdown-banner {
+    position: fixed; top: 2.4rem; left: 50%; transform: translateX(-50%);
+    z-index: 400;
+    background: rgba(196,122,26,0.96);
+    color: #fff; border-radius: 10px; padding: 0.65rem 1rem;
+    font-size: 0.86rem; font-weight: 500;
+    display: none; align-items: center; gap: 0.8rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    max-width: 520px;
+  }
+  .countdown-banner.show { display: flex; }
+  .countdown-timer { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .countdown-actions { display: flex; gap: 0.45rem; margin-left: auto; }
+  .countdown-btn {
+    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.45);
+    color: #fff; font: inherit; font-size: 0.78rem; font-weight: 600;
+    padding: 0.2em 0.7em; border-radius: 5px; cursor: pointer;
+  }
+  .countdown-btn:hover { background: rgba(255,255,255,0.3); }
+  .countdown-btn.keep { background: rgba(255,255,255,0.9); color: #333; border-color: transparent; }
+  .countdown-btn.keep:hover { background: #fff; }
+</style>
+</head>
+<body>
+<div class="os">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="os-name">ThermOS</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-clock" id="topbar-clock"></span>
+      <button class="sysmenu-trigger" id="sysmenu-trigger" aria-label="System menu">&#9211;<span class="sysmenu-dot" id="sysmenu-dot"></span></button>
+    </div>
+    <div class="sysmenu-dropdown" id="sysmenu-dropdown"></div>
+  </div>
+  <div class="desktop-area">
+    <div class="window">
+      <div class="window-chrome">
+        <div class="traffic-lights">
+          <button class="tl close" title="Close"></button>
+          <button class="tl min" title="Minimize"></button>
+          <button class="tl max" title="Maximize"></button>
+        </div>
+        <div class="window-title">System Settings</div>
+      </div>
+      <div class="window-content">
+        <div class="app">
+          <nav class="sidebar" id="sidebar"></nav>
+          <main class="pane" id="pane"></main>
+        </div>
+        <footer>
+          These settings are read from the OS itself. See <b>How changes apply</b>. &nbsp;<a href="https://github.com/hsjobeki/thermos">Source</a>
+        </footer>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-region" id="toast-region"></div>
+
+<div class="countdown-banner" id="countdown-banner">
+  <span id="countdown-msg"></span>
+  <span>Reverting in <b class="countdown-timer" id="countdown-timer">15</b>s</span>
+  <div class="countdown-actions">
+    <button class="countdown-btn keep" id="countdown-keep">Keep</button>
+    <button class="countdown-btn" id="countdown-revert">Revert</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script id="settings-data" type="application/json">
+{"builders":[{"inputs":[],"name":"etc","options":[],"publish":[],"subscribe":["/contracts/etc"]},{"inputs":["/builders/rootfs"],"name":"image","options":[],"publish":[],"subscribe":[]},{"inputs":[],"name":"initrd","options":[{"default":["virtio_blk","virtio_pci","virtio_net","ext4"],"kind":"any","name":"kernelModules"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"packages","options":[],"publish":[],"subscribe":["/contracts/packages"]},{"inputs":["/builders/toplevel"],"name":"rootfs","options":[],"publish":[],"subscribe":[]},{"inputs":[],"name":"tmpfiles","options":[],"publish":[],"subscribe":["/contracts/tmpfiles"]},{"inputs":["/builders/etc","/builders/packages","/builders/tmpfiles","/builders/units","/builders/users"],"name":"toplevel","options":[],"publish":[],"subscribe":["/contracts/assertions"]},{"inputs":[],"name":"units","options":[],"publish":[],"subscribe":["/contracts/units"]},{"inputs":[],"name":"users","options":[],"publish":[],"subscribe":["/contracts/users","/contracts/groups"]}],"contracts":[{"inputs":[],"name":"assertions","options":[{"kind":"bool","name":"assertion"},{"kind":"str","name":"message"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"etc","options":[{"kind":"str","name":"name"},{"kind":"str","name":"text"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"groups","options":[{"kind":"int","name":"gid"},{"default":[],"elem":"str","kind":"listOf","name":"members"},{"kind":"str","name":"name"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"packages","options":[{"kind":"derivation","name":"package"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"pam","options":[{"kind":"str","name":"name"},{"elem":"struct","kind":"listOf","name":"rules"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"tmpfiles","options":[{"kind":"str","name":"rule"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"units","options":[{"elem":"attrsOf","kind":"attrsOf","name":"unitConfig"},{"kind":"str","name":"unitName"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"users","options":[{"default":"","kind":"str","name":"gecos"},{"kind":"int","name":"gid"},{"default":"!","kind":"str","name":"hashedPassword"},{"default":"/var/empty","kind":"str","name":"home"},{"kind":"str","name":"name"},{"default":"/sbin/nologin","kind":"str","name":"shell"},{"kind":"int","name":"uid"}],"publish":[],"subscribe":[]}],"middleware":[{"inputs":[],"name":"pam","options":[],"publish":["/contracts/etc"],"subscribe":["/contracts/pam"]}],"modules":[{"inputs":[],"name":"base","options":[{"default":"thermos","kind":"str","name":"hostName"},{"default":"!","kind":"str","name":"rootHashedPassword"}],"publish":["/contracts/etc","/contracts/packages","/contracts/tmpfiles","/contracts/users","/contracts/groups","/contracts/pam"],"subscribe":[]},{"inputs":[],"name":"dbus","options":[],"publish":["/contracts/units","/contracts/users","/contracts/groups","/contracts/packages","/contracts/etc","/contracts/tmpfiles"],"subscribe":[]},{"inputs":[],"name":"getty","options":[{"default":"","kind":"str","name":"autologinUser"},{"default":"115200","kind":"str","name":"baudRate"},{"default":[],"elem":"str","kind":"listOf","name":"serialTtys"},{"default":["tty1"],"elem":"str","kind":"listOf","name":"ttys"}],"publish":["/contracts/units"],"subscribe":[]},{"inputs":[],"name":"networkd","options":[{"default":[],"elem":"str","kind":"listOf","name":"addresses"},{"default":false,"kind":"bool","name":"enable"},{"default":true,"kind":"bool","name":"useDHCP"}],"publish":["/contracts/etc","/contracts/users","/contracts/groups","/contracts/assertions"],"subscribe":[]},{"inputs":[],"name":"openssh","options":[{"default":{},"elem":"listOf","kind":"attrsOf","name":"authorizedKeys"},{"default":"prohibit-password","kind":"str","name":"permitRootLogin"},{"default":22,"kind":"int","name":"port"}],"publish":["/contracts/units","/contracts/users","/contracts/groups","/contracts/packages","/contracts/pam","/contracts/etc"],"subscribe":[]}]}
+</script>
+
+<script id="activation-model" type="application/json">
+{
+  "classes": ["instant", "live", "reload", "restart", "reboot"],
+  "classMeta": {
+    "instant": { "label": "Instant", "blurb": "Per-user state. Applies immediately and never rebuilds.", "macos": "Night Shift, scrolling" },
+    "live":    { "label": "Live",    "blurb": "Applies with no restart; read on next use.", "macos": "Time zone, app install" },
+    "reload":  { "label": "Reload",  "blurb": "The service reloads its settings without dropping connections.", "macos": "Firewall rules" },
+    "restart": { "label": "Reconnect", "blurb": "A background service restarts. A connection to it may drop, but the computer keeps running.", "macos": "SSH port" },
+    "reboot":  { "label": "Restart",   "blurb": "Your computer restarts into the updated system, with rollback.", "macos": "FileVault, OS update" }
+  },
+  "contractBaseClass": {
+    "etc": "restart",
+    "units": "restart",
+    "packages": "reboot",
+    "users": "reboot",
+    "groups": "reboot",
+    "pam": "live",
+    "tmpfiles": "live"
+  },
+  "contractClassNote": {
+    "etc": "A change under /etc, the writable overlay. At most it needs a reconnect, and less when its service reloads or re-reads the change on its own.",
+    "units": "A unit-file change needs daemon-reload, and the new ExecStart only takes effect on the next restart.",
+    "packages": "Adding to the sealed /usr means a new image. /usr can also be extended live with a sysext overlay, which is how a package is added here. see: Add a package.",
+    "users": "passwd/group/shadow are static files baked into the sealed image (modules/builders/users.nix).",
+    "groups": "Same sealed account files as users.",
+    "pam": "pam.d configs are read when an application attaches to the PAM API, i.e. at the next authentication.",
+    "tmpfiles": "Applied on demand with systemd-tmpfiles --create; no restart."
+  },
+  "contractClassCite": {
+    "units": "systemctl(1) daemon-reload, systemd 260.1",
+    "packages": "modules/builders/packages.nix; sealed /usr (docs 08). sysext: systemd-sysext(8)",
+    "users": "modules/builders/users.nix (static passwd/group/shadow)",
+    "pam": "pam.conf(5), linux-pam 1.7.1",
+    "tmpfiles": "systemd-tmpfiles(8), systemd 260.1"
+  },
+  "attribution": {
+    "base.hostName": {
+      "label": "Computer name",
+      "blurb": "The name your computer shows on the network and in the terminal.",
+      "contracts": ["etc"],
+      "classByContract": { "etc": "live" },
+      "note": "Written to /etc/hostname, which no service depends on. hostnamectl applies a hostname change live.",
+      "cite": "hostnamectl(1), systemd 260.1",
+      "affects": ["/etc/hostname"]
+    },
+    "base.rootHashedPassword": {
+      "label": "Administrator password",
+      "blurb": "The password for the administrator (root) account.",
+      "contracts": ["users"],
+      "secret": true,
+      "note": "The password is stored in the sealed system image, so changing it builds a new image. Moving account files to writable storage would make this apply instantly.",
+      "cite": "modules/builders/users.nix (static shadow)",
+      "affects": ["/etc/shadow (in sealed image)"]
+    },
+    "getty.autologinUser": {
+      "label": "Automatic login",
+      "blurb": "Sign this user in automatically when the computer starts.",
+      "contracts": ["units"],
+      "select": "loginUsers",
+      "note": "Changes the console login service. A unit change takes effect after a reload and restart of the console login.",
+      "cite": "systemctl(1) daemon-reload, systemd 260.1",
+      "affects": ["getty@*.service unit"],
+      "service": "console login"
+    },
+    "getty.ttys": {
+      "label": "Virtual terminals",
+      "blurb": "Text consoles that show a login prompt (Ctrl+Alt+F1, F2, ...).",
+      "contracts": ["units"],
+      "note": "Each terminal has its own login service. Adding or removing them takes effect after a reload and restart.",
+      "cite": "systemctl(1) daemon-reload, systemd 260.1",
+      "affects": ["getty@*.service units"],
+      "service": "console login"
+    },
+    "getty.serialTtys": {
+      "label": "Serial consoles",
+      "blurb": "Serial ports that show a login prompt.",
+      "contracts": ["units"],
+      "note": "Maps to serial login services; same reload and restart path as virtual terminals.",
+      "cite": "systemctl(1) daemon-reload, systemd 260.1",
+      "affects": ["serial-getty@*.service units"],
+      "service": "serial console"
+    },
+    "getty.baudRate": {
+      "label": "Serial speed",
+      "blurb": "Baud rate for serial consoles.",
+      "contracts": ["units"],
+      "note": "Changes the serial login service; takes effect on restart.",
+      "cite": "systemctl(1) daemon-reload, systemd 260.1",
+      "affects": ["serial-getty@*.service units"],
+      "service": "serial console"
+    },
+    "networkd.enable": {
+      "label": "Wired network",
+      "blurb": "Let ThermOS configure the wired connection.",
+      "contracts": ["etc"],
+      "classByContract": { "etc": "restart" },
+      "note": "Turning this on brings up the network service. Starting the service is a restart-class action.",
+      "cite": "systemd-networkd.service(8), systemd 260.1",
+      "affects": ["/etc/systemd/network/", "systemd-networkd.service"],
+      "service": "network"
+    },
+    "networkd.useDHCP": {
+      "label": "Automatic (DHCP)",
+      "blurb": "Get an IP address automatically. Turn off to enter one yourself.",
+      "contracts": ["etc"],
+      "classByContract": { "etc": "reload" },
+      "note": "Edits the network file; networkctl reload applies it without restarting the network service.",
+      "cite": "networkctl(1) reload, systemd 260.1",
+      "affects": ["/etc/systemd/network/80-wired.network"],
+      "service": "network"
+    },
+    "networkd.addresses": {
+      "label": "IP address",
+      "blurb": "The address for this computer when automatic is off. Example: 10.0.2.15/24.",
+      "contracts": ["etc"],
+      "classByContract": { "etc": "reload" },
+      "note": "Edits the network file; networkctl reload applies it without restarting the network service.",
+      "cite": "networkctl(1) reload, systemd 260.1",
+      "affects": ["/etc/systemd/network/80-wired.network"],
+      "service": "network"
+    },
+    "openssh.port": {
+      "label": "SSH port",
+      "blurb": "The port for incoming SSH connections.",
+      "contracts": ["etc"],
+      "classByContract": { "etc": "restart" },
+      "note": "sshd has no live reload; it re-reads its config on restart, and a new port needs the daemon restarted.",
+      "cite": "sshd(8), openssh 10.3p1",
+      "affects": ["/etc/ssh/sshd_config"],
+      "service": "ssh"
+    },
+    "openssh.permitRootLogin": {
+      "label": "Allow administrator over SSH",
+      "blurb": "Whether the administrator can sign in over SSH.",
+      "contracts": ["etc"],
+      "classByContract": { "etc": "restart" },
+      "enum": ["yes", "prohibit-password", "no"],
+      "note": "Applied when sshd restarts.",
+      "cite": "sshd_config(5), openssh 10.3p1",
+      "affects": ["/etc/ssh/sshd_config"],
+      "service": "ssh"
+    },
+    "openssh.authorizedKeys": {
+      "label": "Authorized keys",
+      "blurb": "Public keys allowed to sign in over SSH. One user per line: user key.",
+      "contracts": ["etc"],
+      "classByContract": { "etc": "live" },
+      "note": "Keys are read at sign-in time, so the next connection picks up new keys without touching the daemon.",
+      "cite": "sshd_config(5)/sshd(8) AUTHORIZED_KEYS, openssh 10.3p1",
+      "affects": ["/etc/ssh/authorized_keys/<user>"]
+    },
+    "packages.add": {
+      "label": "Install an app",
+      "blurb": "Add an app to the system.",
+      "contracts": ["packages"],
+      "classByContract": { "packages": "live" },
+      "note": "An app is additional files under /usr. A sysext image overlays them onto the read-only /usr at runtime (systemd-sysext refresh), with no rebuild and no restart.",
+      "mechanism": "systemd-sysext merges the app over /usr at runtime. The overlay can itself be sealed and signed, and persists across a restart when enabled.",
+      "alt": "Needs more when the app replaces a library a running program already uses (that program reconnects), or when it must be folded into the sealed base (a restart).",
+      "cite": "systemd-sysext(8), systemd 260.1; modules/builders/packages.nix",
+      "affects": ["/usr (sysext overlay)"]
+    }
+  },
+  "synthetic": {
+    "packages.add": { "module": "packages", "optionName": "add", "kind": "str", "default": "", "publish": ["/contracts/packages"] }
+  },
+  "nixConfig": {
+    "openssh.port":  { "value": 2222, "file": "config.nix", "line": 4 },
+    "base.hostName": { "value": "thermos-dev", "file": "config.nix", "line": 7 }
+  },
+  "categories": [
+    { "id": "general", "name": "General",       "blurb": "Your computer's name.",        "items": ["base.hostName"] },
+    { "id": "network", "name": "Network",       "blurb": "Wired network connection.",     "items": ["networkd.enable", "networkd.useDHCP", "networkd.addresses"] },
+    { "id": "sharing", "name": "Remote Login",  "blurb": "Reach this computer over SSH.", "items": ["openssh.port", "openssh.permitRootLogin", "openssh.authorizedKeys"] },
+    { "id": "users",   "name": "Users & Login", "blurb": "Accounts and how you sign in.", "items": ["base.rootHashedPassword", "getty.autologinUser", "getty.ttys", "getty.serialTtys", "getty.baudRate"] }
+  ],
+  "conflicts": [
+    {
+      "key": "networkd.useDHCP",
+      "title": "DHCP is not yet implemented",
+      "message": "networkd asserts dhcp is not yet implemented. Enabling networkd with useDHCP=true fails at eval time. Set a static address and disable DHCP.",
+      "cite": "modules/services/networkd.nix (assertion: !options.useDHCP)"
+    },
+    {
+      "key": "networkd.addresses",
+      "title": "Static addresses required without DHCP",
+      "message": "When DHCP is disabled, networkd asserts that at least one static address must be set, otherwise the interface has no configuration.",
+      "cite": "modules/services/networkd.nix (assertion: useDHCP || addresses != [])"
+    }
+  ],
+  "illustrative": [
+    { "id": "warmth",     "label": "Night Shift",        "kind": "int",  "default": 40, "unit": "%", "blurb": "Warmer colors in the evening to reduce eye strain." },
+    { "id": "scroll",     "label": "Natural scrolling",  "kind": "bool", "default": true,            "blurb": "Content follows your fingers, as on a trackpad." },
+    { "id": "dock",       "label": "Auto-hide the dock", "kind": "bool", "default": false,           "blurb": "Hide the dock until you point at the screen edge." },
+    { "id": "defaultapp", "label": "Default browser",    "kind": "str",  "default": "Firefox",       "blurb": "Which browser opens web links." },
+    { "id": "lowpower",   "label": "Low Power Mode",     "kind": "bool", "default": false,           "blurb": "Reduce performance to save battery." }
+  ],
+  "loginUsers": ["root", "alice"],
+  "apps": [
+    { "id": "firefox",     "name": "Firefox",     "blurb": "Web browser",      "installed": true },
+    { "id": "libreoffice", "name": "LibreOffice", "blurb": "Office suite",     "installed": false },
+    { "id": "vlc",         "name": "VLC",         "blurb": "Media player",     "installed": false },
+    { "id": "gimp",        "name": "GIMP",        "blurb": "Image editor",     "installed": false },
+    { "id": "thunderbird", "name": "Thunderbird", "blurb": "Email client",     "installed": false },
+    { "id": "inkscape",    "name": "Inkscape",    "blurb": "Vector graphics",  "installed": false },
+    { "id": "krita",       "name": "Krita",       "blurb": "Digital painting", "installed": false },
+    { "id": "blender",     "name": "Blender",     "blurb": "3D creation",      "installed": false }
+  ],
+  "crosswalk": {
+    "intro": "macOS already runs from a sealed, signed system volume and updates by installing a new snapshot and restarting, keeping the previous one for rollback. ThermOS works the same way: dm-verity seals the system image, and an update swaps in a new one with A/B rollback. Everyday use stays smooth because per-user state lives off the sealed image, so most settings apply instantly, and the few changes that touch the sealed image tell you first, with a rollback.",
+    "part1Title": "macOS settings, by tier",
+    "part1Note": "Six of these ten macOS settings are per-user state that applies instantly. On ThermOS the same state lives off the sealed image, so those settings stay instant here too.",
+    "part1": [
+      { "setting": "Night Shift",        "tier": "instant", "thermos": "compositor/display runtime (illustrative)" },
+      { "setting": "Auto-hide Dock",     "tier": "instant", "thermos": "per-user UI pref in ~/.config" },
+      { "setting": "Tap to click",       "tier": "instant", "thermos": "libinput per-user" },
+      { "setting": "FileVault",          "tier": "reboot",  "thermos": "LUKS + TPM2 (Phase 4); re-encrypt + boot chain" },
+      { "setting": "Hot Corners",        "tier": "instant", "thermos": "compositor pref" },
+      { "setting": "Text Replacements",  "tier": "instant", "thermos": "per-user data in ~/.config" },
+      { "setting": "Low Power Mode",     "tier": "live",    "thermos": "power-profiles-daemon runtime knob" },
+      { "setting": "Firewall",           "tier": "reload",  "thermos": "nftables ruleset (Phase 4); reload, no restart" },
+      { "setting": "Time zone (auto)",   "tier": "live",    "thermos": "timedatectl writes /etc/localtime; live" },
+      { "setting": "Scroll: Natural",    "tier": "instant", "thermos": "libinput per-user" }
+    ],
+    "part2Title": "macOS modifications, by mechanism",
+    "part2": [
+      { "mod": "App Store app install",      "tier": "live",    "thermos": "packages contract delivered as a sysext overlay on /usr (systemd-sysext refresh). Like macOS apps landing on the data volume, no restart." },
+      { "mod": ".pkg system component",       "tier": "reboot",  "thermos": "folded into the sealed /usr (new image, A/B). No imperative installers into the sealed base." },
+      { "mod": "macOS update (SSV re-seal)", "tier": "reboot",  "thermos": "A/B systemd-sysupdate + dm-verity re-seal. The direct analog (SSV is to macOS what verity is to ThermOS)." },
+      { "mod": "Grant TCC permission",       "tier": "instant", "thermos": "Polkit / portal permission (per-app runtime)" },
+      { "mod": "Sign into iCloud",           "tier": "instant", "thermos": "account / secrets provisioning (per-user runtime)" },
+      { "mod": "Config profile / MDM",       "tier": "reload",  "thermos": "confext image in /var/lib/confexts -> confext merge; can override user prefs" },
+      { "mod": "Login item / launch agent",  "tier": "restart", "thermos": "units contract (user service)" },
+      { "mod": "System extension / kext",    "tier": "reboot",  "thermos": "kernelModules contract (roadmap) / sysext; approval + restart" },
+      { "mod": "Erase / format disk",        "tier": "reboot",  "thermos": "systemd-repart (Phase 3); destructive" },
+      { "mod": "Default app for file type",  "tier": "instant", "thermos": "per-user mimeapps.list (xdg-mime)" }
+    ]
+  }
+}
+</script>
+
+<script>
+(function () {
+  "use strict";
+
+  var DATA  = JSON.parse(document.getElementById("settings-data").textContent);
+  var MODEL = JSON.parse(document.getElementById("activation-model").textContent);
+
+  // ---- helpers -------------------------------------------------------------
+  function debounce(fn, ms) {
+    var t = null;
+    return function () {
+      var args = arguments;
+      clearTimeout(t);
+      t = setTimeout(function () { fn.apply(null, args); }, ms);
+    };
+  }
+
+  function el(tag, cls, txt) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (txt != null) e.textContent = txt;
+    return e;
+  }
+  function contractName(p) { return p.replace("/contracts/", ""); }
+  function classIndex(c) { return MODEL.classes.indexOf(c); }
+  function maxClass(list) {
+    return list.reduce(function (m, c) { return classIndex(c) > classIndex(m) ? c : m; }, list[0]);
+  }
+  function deepEq(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+
+  function moduleByName(name) {
+    return DATA.modules.find(function (m) { return m.name === name; }) || null;
+  }
+
+  // Resolve a settings key into a uniform descriptor.
+  function resolveSetting(key) {
+    if (key.indexOf("app:") === 0) {
+      var id = key.slice(4);
+      var app = (MODEL.apps || []).find(function (a) { return a.id === id; });
+      return {
+        key: key, module: "packages", optionName: "install", kind: "app",
+        elem: null, "default": false, publish: ["/contracts/packages"], provenance: "pipeline",
+        label: app ? app.name : id, blurb: app ? app.blurb : "", "enum": null, secret: false,
+        select: null, attrKey: "packages.add", app: app || null
+      };
+    }
+    var attr = MODEL.attribution[key] || {};
+    var syn  = MODEL.synthetic[key];
+    var module, optionName, kind, elem, def, publish, provenance;
+    if (syn) {
+      module = syn.module; optionName = syn.optionName;
+      kind = syn.kind; elem = syn.elem || null; def = syn["default"];
+      publish = syn.publish; provenance = "pipeline";
+    } else {
+      var parts = key.split(".");
+      var mod = moduleByName(parts[0]);
+      var opt = mod.options.find(function (o) { return o.name === parts[1]; });
+      module = parts[0]; optionName = parts[1];
+      kind = opt.kind; elem = opt.elem || null;
+      def = ("default" in opt) ? opt["default"] : defaultForKind(kind, elem);
+      publish = mod.publish; provenance = "contract";
+    }
+    return {
+      key: key, module: module, optionName: optionName,
+      kind: kind, elem: elem, "default": def, publish: publish, provenance: provenance,
+      label: attr.label || optionName, blurb: attr.blurb || "",
+      "enum": attr["enum"] || null, secret: !!attr.secret,
+      select: attr.select || null, attrKey: key
+    };
+  }
+
+  function defaultForKind(kind, elem) {
+    if (kind === "bool")   return false;
+    if (kind === "int")    return 0;
+    if (kind === "listOf") return [];
+    if (kind === "attrsOf") return {};
+    return "";
+  }
+
+  // ---- activation resolver -------------------------------------------------
+  function attributedContracts(key, publish) {
+    var a = MODEL.attribution[key];
+    if (a && a.contracts) return a.contracts;
+    return publish.map(contractName).filter(function (c) { return MODEL.contractBaseClass[c] != null; });
+  }
+  function classForContract(key, c) {
+    var a = MODEL.attribution[key];
+    if (a && a.classByContract && a.classByContract[c]) return a.classByContract[c];
+    return MODEL.contractBaseClass[c];
+  }
+  function priceOf(s) {
+    var k = s.attrKey || s.key;
+    var cs = attributedContracts(k, s.publish);
+    return maxClass(cs.map(function (c) { return classForContract(k, c); }));
+  }
+  function unattributedPriceOf(s) {
+    var cs = s.publish.map(contractName).filter(function (c) { return MODEL.contractBaseClass[c] != null; });
+    if (cs.length === 0) return null;
+    return maxClass(cs.map(function (c) { return MODEL.contractBaseClass[c]; }));
+  }
+
+  // ---- state ---------------------------------------------------------------
+  var baseline = {};  // committed values
+  var staged   = {};  // reboot-class only: changes waiting for restart
+  var applying = {};  // in-flight live/restart applies: { key: { timer, target } }
+  var current  = "appstore";
+  var devMode = false;  // discovery layer: nix-declared vs GUI-owned settings
+
+  MODEL.categories.forEach(function (cat) {
+    cat.items.forEach(function (key) { baseline[key] = resolveSetting(key)["default"]; });
+  });
+  (MODEL.apps || []).forEach(function (a) { baseline["app:" + a.id] = !!a.installed; });
+  // nix-config wins precedence: seed baseline from nix-declared values.
+  Object.keys(MODEL.nixConfig || {}).forEach(function (key) {
+    baseline[key] = MODEL.nixConfig[key].value;
+  });
+
+  function effective(key) {
+    return Object.prototype.hasOwnProperty.call(staged, key) ? staged[key] : baseline[key];
+  }
+
+  // A setting is config-managed when the user's Nix config declares it.
+  function nixManaged(key) {
+    return MODEL.nixConfig && MODEL.nixConfig[key] != null;
+  }
+  // Config-managed settings are read-only in user mode. Developer mode
+  // unlocks them for editing (changes there override config.nix).
+  function locked(key) {
+    return nixManaged(key) && !devMode;
+  }
+
+  // ---- value formatting ----------------------------------------------------
+  function fmt(s, v) {
+    if (s.kind === "app") return v ? "installed" : "removed";
+    if (s.secret) return (v === "!" || v === "") ? "not set" : "updated";
+    if (s.select) return v === "" ? "Disabled" : v;
+    if (Array.isArray(v)) return v.length ? v.join(", ") : "(none)";
+    if (typeof v === "boolean") return v ? "on" : "off";
+    if (v && typeof v === "object") {
+      var ks = Object.keys(v);
+      return ks.length ? ks.map(function (k) { return k + ": " + v[k].join(" "); }).join("; ") : "(none)";
+    }
+    if (v === "") return "(empty)";
+    return String(v);
+  }
+
+  // ---- conflicts (gates restart for staged bundle) -------------------------
+  // Evaluated against the proposed final state: baseline + staged + any extra.
+  function checkConflictsFor(extra) {
+    // extra = { key: val } to layer on top of effective for this check
+    function eff(k) {
+      if (extra && Object.prototype.hasOwnProperty.call(extra, k)) return extra[k];
+      return effective(k);
+    }
+    var out = [];
+    var enabled = eff("networkd.enable") === true;
+    if (enabled) {
+      if (eff("networkd.useDHCP") === true) {
+        out.push(MODEL.conflicts.find(function (c) { return c.key === "networkd.useDHCP"; }));
+      } else if ((eff("networkd.addresses") || []).length === 0) {
+        out.push(MODEL.conflicts.find(function (c) { return c.key === "networkd.addresses"; }));
+      }
+    }
+    return out.filter(Boolean);
+  }
+  function validate(key, val) {
+    var c = checkConflictsFor(defineObj(key, val));
+    return c.length ? c[0] : null;
+  }
+
+  // Showcase-only stand-ins for failures a real system surfaces only after
+  // it attempts the change (a service rejecting config, a unit not restarting).
+  // Nothing here touches a live system; shipped copy is grounded first.
+  function simulateLateFailure(key, val) {
+    if (key === "openssh.authorizedKeys" && val && typeof val === "object") {
+      var users = Object.keys(val);
+      for (var ui = 0; ui < users.length; ui++) {
+        var ks = val[users[ui]] || [];
+        for (var ki = 0; ki < ks.length; ki++) {
+          if (!/^(ssh-|ecdsa-|sk-)/.test(ks[ki])) {
+            return {
+              message: "sshd refused to reload: the key for " + users[ui] +
+                " is not a recognized type. The previous keys stay in effect.",
+              cite: "showcase: simulated sshd reload result"
+            };
+          }
+        }
+      }
+    }
+    if (key === "openssh.port" && (val === 0 || val === 1)) {
+      return {
+        message: "sshd refused to start on port " + val + ". The previous port stays in effect.",
+        cite: "showcase: simulated sshd restart result"
+      };
+    }
+    return null;
+  }
+
+  // ---- change routing ------------------------------------------------------
+  // Every control calls applyChange; it validates, then dispatches by class.
+  function applyChange(key, val) {
+    if (locked(key)) return;  // config owns this in user mode; GUI must not write
+    var cls = priceOf(resolveSetting(key));
+    var err = validate(key, val);
+    if (err) { showFieldError(key, err); return; }
+    clearFieldStatus(key);
+    if (cls === "reboot") {
+      deepEq(val, baseline[key]) ? unstageChange(key) : stageChange(key, val);
+    } else if (cls === "restart") {
+      if (!deepEq(val, baseline[key])) openConfirm(key, val);
+    } else {
+      beginApply(key, val, cls, null);
+    }
+  }
+
+  // Apply timing: how long each class's apply shows as in-flight (showcase).
+  var APPLY_MS = { instant: 0, live: 700, reload: 900, restart: 1800, install: 1300 };
+
+  // Async apply lifecycle: in-flight, then success (commit) or late failure.
+  // The field holds the user's intent throughout; baseline (the live value)
+  // only advances on confirmed success.
+  function beginApply(key, val, cls, onSuccess) {
+    var prev = baseline[key];
+    if (deepEq(val, prev)) { cancelApplying(key); clearFieldStatus(key); return; }
+    if (applying[key] && deepEq(applying[key].target, val)) return;
+    cancelApplying(key);
+    var y = APPLY_MS[cls] != null ? APPLY_MS[cls] : 700;
+    if (y > 0) setFieldStatus(key, "applying", "Applying\u2026");
+    var timer = setTimeout(function () {
+      delete applying[key];
+      var late = simulateLateFailure(key, val);
+      if (late) { showFieldError(key, late); return; }
+      clearFieldStatus(key);
+      applyLive(key, val, prev);
+      if (onSuccess) onSuccess();
+    }, y);
+    applying[key] = { timer: timer, target: val };
+  }
+
+  function cancelApplying(key) {
+    if (applying[key]) { clearTimeout(applying[key].timer); delete applying[key]; }
+  }
+
+  // ---- inline field status -------------------------------------------------
+  function fieldStatusEl(key) { return document.getElementById("status-" + cssId(key)); }
+  function setFieldStatus(key, state, text) {
+    var e = fieldStatusEl(key);
+    if (!e) return;
+    e.className = "field-status " + state;
+    e.innerHTML = "";
+    if (state === "applying") {
+      e.appendChild(el("span", "spinner"));
+      e.appendChild(el("span", null, text));
+    }
+    e.style.display = "";
+  }
+  function showFieldError(key, info) {
+    var e = fieldStatusEl(key);
+    if (!e) return;
+    e.className = "field-status error";
+    e.innerHTML = "";
+    e.appendChild(el("div", "fs-msg", info.message));
+    if (info.cite) e.appendChild(el("div", "fs-cite", "cite: " + info.cite));
+    e.style.display = "";
+  }
+  function clearFieldStatus(key) {
+    var e = fieldStatusEl(key);
+    if (e) { e.style.display = "none"; e.innerHTML = ""; e.className = "field-status"; }
+  }
+
+  // Immediate apply: write baseline, pulse card, show toast with Undo.
+  function applyLive(key, val, prevVal) {
+    clearFieldStatus(key);
+    var prev = (prevVal !== null && prevVal !== undefined) ? prevVal : baseline[key];
+    // Remove from staged if it was staged (e.g. after an unstage path)
+    delete staged[key];
+    baseline[key] = val;
+    markCard(key);
+    renderSidebar();
+    updateSystemMenuDot();
+    var s = resolveSetting(key);
+    if (!deepEq(val, prev)) {
+      var label = s.label;
+      var valStr = fmt(s, val);
+      showToast(label + ": " + valStr, function () {
+        applyLive(key, prev, val);
+        renderPane(); // reset controls to new effective value
+      });
+    }
+  }
+
+  // Stage for restart (reboot-class only).
+  function stageChange(key, val) {
+    staged[key] = val;
+    markCard(key);
+    renderSidebar();
+    updateSystemMenuDot();
+    renderSystemMenu();
+  }
+  function unstageChange(key) {
+    delete staged[key];
+    markCard(key);
+    renderSidebar();
+    updateSystemMenuDot();
+    renderSystemMenu();
+  }
+
+  // Reconnect path: confirm first, then apply live + start countdown.
+  function openConfirm(key, newVal) {
+    var s      = resolveSetting(key);
+    var prevVal = effective(key);
+    var attr   = MODEL.attribution[s.attrKey || key] || {};
+    var service = attr.service || "the service";
+
+    var sheet   = document.getElementById("sheet");
+    var overlay = document.getElementById("overlay");
+    sheet.innerHTML = "";
+
+    sheet.appendChild(el("h2", null, "Apply this change?"));
+    sheet.appendChild(el("p", "sub",
+      "This restarts " + service + ". People connected to this computer over " + service +
+      " may lose their connection, and it can interrupt what you\u2019re doing."));
+
+    // change preview
+    var item = el("div", "receipt-item");
+    var head = el("div", "ri-head");
+    head.appendChild(el("span", "ri-title", s.label));
+    head.appendChild(priceBadge("restart"));
+    item.appendChild(head);
+    var diff = el("div", "ri-diff");
+    diff.appendChild(el("span", "old", fmt(s, prevVal)));
+    diff.appendChild(el("span", "arrow", "  \u2192  "));
+    diff.appendChild(el("span", "new", fmt(s, newVal)));
+    item.appendChild(diff);
+    sheet.appendChild(item);
+
+    var actions = el("div", "sheet-actions");
+    var cancel  = el("button", "btn ghost", "Cancel");
+    cancel.onclick = function () {
+      closeOverlay();
+      renderPane(); // discard: reset control to the current live value
+    };
+    var applyBtn = el("button", "btn primary", "Apply now");
+    applyBtn.onclick = function () {
+      closeOverlay();
+      beginApply(key, newVal, "restart", function () {
+        startCountdown(key, prevVal, s);
+      });
+    };
+    actions.appendChild(cancel);
+    actions.appendChild(applyBtn);
+    sheet.appendChild(actions);
+
+    overlay.classList.add("show");
+  }
+
+  // Keep-changes countdown. Auto-reverts if user goes silent.
+  var _countdownInterval = null;
+  function startCountdown(key, prevVal, s) {
+    if (_countdownInterval) clearInterval(_countdownInterval);
+    var banner  = document.getElementById("countdown-banner");
+    var timerEl = document.getElementById("countdown-timer");
+    var msgEl   = document.getElementById("countdown-msg");
+    var service = (MODEL.attribution[s.attrKey || s.key] || {}).service || "the service";
+    msgEl.textContent = "Keep new " + s.label.toLowerCase() + "? (" + service + " restarted)";
+    var secs = 15;
+    timerEl.textContent = secs;
+    banner.classList.add("show");
+
+    _countdownInterval = setInterval(function () {
+      secs--;
+      timerEl.textContent = secs;
+      if (secs <= 0) {
+        clearInterval(_countdownInterval); _countdownInterval = null;
+        banner.classList.remove("show");
+        applyLive(key, prevVal, baseline[key]);
+        renderPane();
+        showToast(s.label + " reverted (timed out)", null);
+      }
+    }, 1000);
+
+    document.getElementById("countdown-keep").onclick = function () {
+      clearInterval(_countdownInterval); _countdownInterval = null;
+      banner.classList.remove("show");
+    };
+    document.getElementById("countdown-revert").onclick = function () {
+      clearInterval(_countdownInterval); _countdownInterval = null;
+      banner.classList.remove("show");
+      applyLive(key, prevVal, baseline[key]);
+      renderPane();
+      showToast(s.label + " reverted", null);
+    };
+  }
+
+  // Staged bundle: open reboot confirmation dialog.
+  function openRebootDialog() {
+    var keys     = Object.keys(staged);
+    if (keys.length === 0) return;
+    var settings = keys.map(resolveSetting);
+
+    var sheet   = document.getElementById("sheet");
+    var overlay = document.getElementById("overlay");
+    sheet.innerHTML = "";
+
+    sheet.appendChild(el("h2", null, "Restart to apply changes"));
+    sheet.appendChild(el("p", "sub",
+      "Your computer restarts into the updated system. The previous version stays for rollback."));
+
+    settings.forEach(function (s) {
+      var item = el("div", "receipt-item");
+      var head = el("div", "ri-head");
+      head.appendChild(el("span", "ri-title", s.label));
+      head.appendChild(priceBadge("reboot"));
+      item.appendChild(head);
+      var diff = el("div", "ri-diff");
+      diff.appendChild(el("span", "old", fmt(s, baseline[s.key])));
+      diff.appendChild(el("span", "arrow", "  \u2192  "));
+      diff.appendChild(el("span", "new", fmt(s, staged[s.key])));
+      item.appendChild(diff);
+      sheet.appendChild(item);
+    });
+
+    // config diff
+    var diffbox = el("div", "diffbox");
+    diffbox.appendChild(el("h4", null, "Configuration diff"));
+    var pre = el("pre");
+    var lines = [];
+    settings.forEach(function (s) {
+      var attr = MODEL.attribution[s.attrKey || s.key] || {};
+      (attr.affects || []).forEach(function (f) {
+        lines.push("~ " + f + "   (" + s.label + ": " + fmt(s, staged[s.key]) + ")");
+      });
+    });
+    pre.textContent = lines.join("\n") || "(no file changes)";
+    diffbox.appendChild(pre);
+    sheet.appendChild(diffbox);
+
+    var actions = el("div", "sheet-actions");
+    var cancel  = el("button", "btn ghost", "Cancel");
+    cancel.onclick = closeOverlay;
+    var restartBtn = el("button", "btn primary", "Restart and apply");
+    restartBtn.onclick = commitStaged;
+    actions.appendChild(cancel);
+    actions.appendChild(restartBtn);
+    sheet.appendChild(actions);
+
+    overlay.classList.add("show");
+  }
+
+  function closeOverlay() { document.getElementById("overlay").classList.remove("show"); }
+
+  // Simulated restart: fold staged into baseline.
+  function commitStaged() {
+    var sheet = document.getElementById("sheet");
+    sheet.innerHTML = "";
+    sheet.appendChild(el("h2", null, "Restarting\u2026"));
+    sheet.appendChild(el("p", "sub",
+      "Applying changes and restarting. (Showcase: nothing was written to a running system.)"));
+    setTimeout(function () {
+      Object.keys(staged).forEach(function (k) { baseline[k] = staged[k]; });
+      staged = {};
+      closeOverlay();
+      renderSidebar();
+      renderPane();
+      updateSystemMenuDot();
+      renderSystemMenu();
+    }, 1200);
+  }
+
+  // ---- toast ---------------------------------------------------------------
+  function showToast(msg, undoFn) {
+    var region = document.getElementById("toast-region");
+    var toast  = el("div", "toast");
+    toast.appendChild(document.createTextNode(msg));
+    if (undoFn) {
+      var btn = el("button", "toast-undo", "Undo");
+      btn.onclick = function () { toast.remove(); undoFn(); };
+      toast.appendChild(btn);
+    }
+    region.appendChild(toast);
+    setTimeout(function () { if (toast.parentNode) toast.remove(); }, 3500);
+  }
+
+  // ---- clock ---------------------------------------------------------------
+  function updateClock() {
+    var c = document.getElementById("topbar-clock");
+    if (c) c.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+
+  // ---- system menu ---------------------------------------------------------
+  function updateSystemMenuDot() {
+    var dot = document.getElementById("sysmenu-dot");
+    if (dot) dot.classList.toggle("show", Object.keys(staged).length > 0);
+  }
+
+  function renderSystemMenu() {
+    var dropdown = document.getElementById("sysmenu-dropdown");
+    dropdown.innerHTML = "";
+    var stagedKeys = Object.keys(staged);
+    if (stagedKeys.length > 0) {
+      var block = el("div", "sysmenu-staged");
+      block.appendChild(el("div", "sysmenu-staged-title",
+        stagedKeys.length + " change" + (stagedKeys.length > 1 ? "s" : "") + " staged for restart"));
+      var list = el("ul", "sysmenu-staged-list");
+      stagedKeys.forEach(function (k) {
+        var s = resolveSetting(k);
+        list.appendChild(el("li", null,
+          s.label + ": " + fmt(s, baseline[k]) + " \u2192 " + fmt(s, staged[k])));
+      });
+      block.appendChild(list);
+      var row = el("div", "sysmenu-btn-row");
+      var rb  = el("button", "sysmenu-btn accent", "Restart and apply");
+      rb.onclick  = function () { closeSystemMenu(); openRebootDialog(); };
+      var kb = el("button", "sysmenu-btn", "Apply on next restart");
+      kb.onclick = closeSystemMenu;
+      row.appendChild(rb); row.appendChild(kb);
+      block.appendChild(row);
+      dropdown.appendChild(block);
+      dropdown.appendChild(el("div", "sysmenu-sep"));
+    }
+    ["Lock Screen", "Log Out\u2026"].forEach(function (label) {
+      dropdown.appendChild(el("div", "sysmenu-item", label));
+    });
+    dropdown.appendChild(el("div", "sysmenu-sep"));
+    // "Restart" replaces when there are staged changes
+    var restartLabel = stagedKeys.length > 0
+      ? "Restart and apply " + stagedKeys.length + " change" + (stagedKeys.length > 1 ? "s" : "") + "\u2026"
+      : "Restart\u2026";
+    var ri = el("div", "sysmenu-item", restartLabel);
+    if (stagedKeys.length > 0) ri.onclick = function () { closeSystemMenu(); openRebootDialog(); };
+    dropdown.appendChild(ri);
+    dropdown.appendChild(el("div", "sysmenu-item", "Shut Down\u2026"));
+  }
+
+  function closeSystemMenu() {
+    document.getElementById("sysmenu-dropdown").classList.remove("show");
+  }
+
+  // Toggle system menu on trigger click; close on outside click.
+  document.getElementById("sysmenu-trigger").addEventListener("click", function (e) {
+    e.stopPropagation();
+    var dd = document.getElementById("sysmenu-dropdown");
+    if (dd.classList.contains("show")) { dd.classList.remove("show"); }
+    else { renderSystemMenu(); dd.classList.add("show"); }
+  });
+  document.addEventListener("click", function () { closeSystemMenu(); });
+  document.getElementById("sysmenu-dropdown").addEventListener("click", function (e) {
+    e.stopPropagation();
+  });
+
+  document.getElementById("overlay").addEventListener("click", function (e) {
+    if (e.target.id === "overlay") closeOverlay();
+  });
+
+  // ---- conflicts -----------------------------------------------------------
+  function stagedCountForCat(catId) {
+    if (catId === "appstore") return 0; // apps are live-apply, not staged
+    var cat = MODEL.categories.find(function (c) { return c.id === catId; });
+    if (!cat) return 0;
+    return cat.items.filter(function (k) {
+      return Object.prototype.hasOwnProperty.call(staged, k);
+    }).length;
+  }
+  function nixCountForCat(catId) {
+    var cat = MODEL.categories.find(function (c) { return c.id === catId; });
+    if (!cat) return 0;
+    return cat.items.filter(function (k) { return nixManaged(k); }).length;
+  }
+
+  // ---- sidebar -------------------------------------------------------------
+  var SECTIONS = [
+    { group: "Desktop", items: [{ id: "desktop", name: "Display & Input" }] },
+    { group: "System", items: [
+      { id: "appstore", name: "App Store" },
+      { id: "general",  name: "General" },
+      { id: "network",  name: "Network" },
+      { id: "sharing",  name: "Remote Login" },
+      { id: "users",    name: "Users & Login" }
+    ] },
+    { group: "Reference", items: [
+      { id: "prices",    name: "How changes apply" },
+      { id: "crosswalk", name: "macOS crosswalk" }
+    ] }
+  ];
+
+  function renderSidebar() {
+    var nav = document.getElementById("sidebar");
+    nav.innerHTML = "";
+    SECTIONS.forEach(function (sec) {
+      nav.appendChild(el("div", "nav-group-label", sec.group));
+      sec.items.forEach(function (it) {
+        var b = el("button", "nav-item" + (it.id === current ? " active" : ""));
+        b.appendChild(el("span", null, it.name));
+        var n = stagedCountForCat(it.id);
+        if (n > 0) b.appendChild(el("span", "count", String(n)));
+        if (devMode && nixCountForCat(it.id) > 0) b.appendChild(el("span", "nix-badge", "\u2039\u203a"));
+        b.onclick = function () { current = it.id; renderSidebar(); renderPane(); };
+        nav.appendChild(b);
+      });
+    });
+  }
+
+  // ---- price + provenance badges -------------------------------------------
+  function priceBadge(cls) {
+    var b = el("span", "badge price price-" + cls, MODEL.classMeta[cls].label);
+    b.title = MODEL.classMeta[cls].blurb;
+    return b;
+  }
+  function provBadge(s) {
+    var map = {
+      contract:    { cls: "prov-contract",     text: "contract: " + s.module },
+      pipeline:    { cls: "prov-pipeline",     text: "contract pipeline \u00b7 synthesized knob" },
+      illustrative:{ cls: "prov-illustrative", text: "illustrative" }
+    };
+    var m = map[s.provenance];
+    return el("span", "badge prov " + m.cls, m.text);
+  }
+
+  // ---- developer mode: nix-owned settings ---------------------------------
+  // Mounts a compact toggle into the window chrome. Flipping it re-renders
+  // the sidebar and pane so nix-owned settings switch to read-only.
+  // Mounts a switch into the window chrome plus a highlight bar below it.
+  // Developer mode unlocks Nix-managed settings for editing.
+  function mountDevModeToggle() {
+    var chrome = document.querySelector(".window-chrome");
+    var sw = el("button", "devmode-toggle" + (devMode ? " on" : ""));
+    sw.type = "button";
+    sw.appendChild(el("span", "devmode-label", "Developer Mode"));
+    var track = el("span", "track"); track.appendChild(el("span", "knob"));
+    sw.appendChild(track);
+    sw.onclick = function () {
+      devMode = !devMode;
+      sw.classList.toggle("on", devMode);
+      applyDevModeChrome();
+      renderSidebar();
+      renderPane();
+    };
+    chrome.appendChild(sw);
+
+    var bar = el("div", "devmode-bar");
+    bar.id = "devmode-bar";
+    bar.appendChild(el("span", "devmode-bar-dot"));
+    bar.appendChild(el("span", null,
+      "Developer Mode"));
+    chrome.parentNode.insertBefore(bar, chrome.nextSibling);
+    applyDevModeChrome();
+  }
+
+  function applyDevModeChrome() {
+    var win = document.querySelector(".window");
+    if (win) win.classList.toggle("devmode-active", devMode);
+    var bar = document.getElementById("devmode-bar");
+    if (bar) bar.style.display = devMode ? "" : "none";
+  }
+
+  // Read-only display of the nix-declared value (no interactive control).
+  function nixValueDisplay(s) {
+    return el("div", "nix-value", fmt(s, effective(s.key)));
+  }
+
+  // Source badge: where in the user's config this setting is declared.
+  // Source badge: where in the user's config this setting is declared.
+  // Clicking it opens a mock editor at that file and line.
+  function nixBadge(key) {
+    var nc = MODEL.nixConfig[key];
+    var b = el("span", "badge prov prov-nix", "managed in " + nc.file + ":" + nc.line);
+    b.title = "Open " + nc.file + ":" + nc.line + " in your editor";
+    b.onclick = function () { openConfigEditor(key); };
+    return b;
+  }
+
+  // Showcase: a representative config.nix whose line numbers match nixConfig.
+  function mockConfigFile() {
+    var ssh  = MODEL.nixConfig["openssh.port"];
+    var base = MODEL.nixConfig["base.hostName"];
+    return [
+      "{ pkgs, ... }:",
+      "{",
+      '  "/services/openssh" = {',
+      "    port = " + ssh.value + ";",
+      "  };",
+      '  "/core/base" = {',
+      '    hostName = "' + base.value + '";',
+      "  };",
+      "}"
+    ];
+  }
+
+  // Mock external editor opened from a source badge (nothing is written).
+  function openConfigEditor(key) {
+    var nc      = MODEL.nixConfig[key];
+    var sheet   = document.getElementById("sheet");
+    var overlay = document.getElementById("overlay");
+    sheet.innerHTML = "";
+
+    sheet.appendChild(el("h2", null, "Edit " + nc.file));
+    sheet.appendChild(el("p", "sub",
+      "Showcase: your editor opens at line " + nc.line + ". Nothing is written from here."));
+
+    var ed = el("div", "mock-editor");
+    var tab = el("div", "mock-editor-tab");
+    tab.appendChild(el("span", "mock-editor-dot"));
+    tab.appendChild(el("span", null, nc.file));
+    tab.appendChild(el("span", "mock-editor-app", "editor"));
+    ed.appendChild(tab);
+
+    var body = el("div", "mock-editor-body");
+    mockConfigFile().forEach(function (text, i) {
+      var n = i + 1;
+      var row = el("div", "editor-line" + (n === nc.line ? " active" : ""));
+      row.appendChild(el("span", "ln", String(n)));
+      row.appendChild(el("span", null, text));
+      body.appendChild(row);
+    });
+    ed.appendChild(body);
+    sheet.appendChild(ed);
+
+    var actions = el("div", "sheet-actions");
+    var done = el("button", "btn primary", "Close");
+    done.onclick = closeOverlay;
+    actions.appendChild(done);
+    sheet.appendChild(actions);
+
+    overlay.classList.add("show");
+  }
+
+  // module name -> ThermOS config path, grounded from systems/qemu.nix.
+  function nixModulePath(module) {
+    var map = {
+      base:     "/core/base",
+      getty:    "/services/getty",
+      networkd: "/services/networkd",
+      openssh:  "/services/openssh"
+    };
+    return map[module] || "/" + module;
+  }
+
+  function toNixLiteral(val, kind) {
+    if (kind === "bool")   return val ? "true" : "false";
+    if (kind === "int")    return String(val);
+    if (kind === "listOf") {
+      if (!val.length) return "[ ]";
+      return "[ " + val.map(function (v) { return '"' + v + '"'; }).join(" ") + " ]";
+    }
+    if (kind === "attrsOf") {
+      var keys = Object.keys(val);
+      if (!keys.length) return "{ }";
+      var lines = keys.map(function (u) {
+        return "    " + u + " = [ " + val[u].map(function (k) { return '"' + k + '"'; }).join(" ") + " ];";
+      });
+      return "{\n" + lines.join("\n") + "\n  }";
+    }
+    if (val === "!" || val === "") return '""';
+    return '"' + String(val).replace(/"/g, '\\"') + '"';
+  }
+
+  // Emits the real ThermOS config form: "/module/path" = { option = value; };
+  function nixExpr(key, val) {
+    var s       = resolveSetting(key);
+    var modPath = nixModulePath(s.module);
+    var nixVal  = toNixLiteral(val, s.kind);
+    return '"' + modPath + '" = {\n  ' + s.optionName + " = " + nixVal + ";\n};";
+  }
+
+  // "Copy as Nix" affordance: emits the setting as a config.nix expression.
+  function nixCopyBlock(key) {
+    var snippet = nixExpr(key, effective(key));
+    var btn = el("button", "btn nix-copy", "Copy as Nix");
+    btn.onclick = function () {
+      navigator.clipboard.writeText(snippet).catch(function () {});
+      btn.textContent = "Copied";
+      btn.classList.add("copied");
+      setTimeout(function () {
+        btn.textContent = "Copy as Nix";
+        btn.classList.remove("copied");
+      }, 1400);
+    };
+    return btn;
+  }
+
+  // ---- controls ------------------------------------------------------------
+  // All controls call applyChange(key, val) on change.
+  function buildControl(s) {
+    var v = effective(s.key);
+    if (s.kind === "bool")   return toggleControl(s, v);
+    if (s.select)            return selectControl(s, v);
+    if (s.secret)            return passwordControl(s, v);
+    if (s["enum"])           return segmentedControl(s, v);
+    if (s.kind === "int")    return numberControl(s, v);
+    if (s.kind === "text")   return textareaControl(s, v);
+    if (s.kind === "listOf") return tagControl(s, v);
+    if (s.kind === "attrsOf") return attrsControl(s, v);
+    return textControl(s, v);
+  }
+
+  function selectControl(s, v) {
+    var sel = el("select", "select-input");
+    [{ value: "", label: "Disabled" }].concat((MODEL[s.select] || []).map(function (u) {
+      return { value: u, label: u };
+    })).forEach(function (o) {
+      var op = el("option", null, o.label);
+      op.value = o.value;
+      if (o.value === v) op.selected = true;
+      sel.appendChild(op);
+    });
+    sel.onchange = function () { applyChange(s.key, sel.value); };
+    return sel;
+  }
+
+  function passwordControl(s, v) {
+    var i = el("input");
+    i.type = "password"; i.placeholder = "Enter a new password";
+    // Clear any previous status the moment the user types; commit on blur.
+    // Reboot class: blur triggers stage, not a confirm dialog, so blur is safe.
+    i.oninput = function () { clearFieldStatus(s.key); cancelApplying(s.key); };
+    i.onblur  = function () { applyChange(s.key, i.value === "" ? "!" : i.value); };
+    return i;
+  }
+
+  function toggleControl(s, v, onApply) {
+    var t = el("button", "toggle" + (v ? " on" : ""));
+    var track = el("span", "track"); track.appendChild(el("span", "knob"));
+    t.appendChild(track);
+    var state = el("span", "state", v ? "on" : "off");
+    t.appendChild(state);
+    t.onclick = function () {
+      v = !v;
+      t.classList.toggle("on", v);
+      state.textContent = v ? "on" : "off";
+      if (onApply) onApply(v); else applyChange(s.key, v);
+    };
+    return t;
+  }
+
+  function numberControl(s, v) {
+    var i = el("input"); i.type = "number"; i.value = v;
+    var cls = priceOf(resolveSetting(s.key));
+    // Restart/reboot: confirm or stage fires on blur to avoid mid-type dialogs.
+    // Live/reload: debounce 800ms so apply triggers after the user settles.
+    var commit = function () {
+      var n = i.value === "" ? 0 : parseInt(i.value, 10);
+      applyChange(s.key, isNaN(n) ? 0 : n);
+    };
+    var debouncedCommit = debounce(commit, 800);
+    i.oninput = function () {
+      clearFieldStatus(s.key); cancelApplying(s.key);
+      if (cls === "restart" || cls === "reboot") return; // wait for blur
+      debouncedCommit();
+    };
+    i.onblur = function () {
+      if (cls === "restart" || cls === "reboot") commit();
+    };
+    return i;
+  }
+
+  function textControl(s, v) {
+    var i = el("input"); i.type = "text"; i.value = v;
+    i.oninput = function () { clearFieldStatus(s.key); cancelApplying(s.key); };
+    i.onblur  = function () { applyChange(s.key, i.value); };
+    return i;
+  }
+
+  function textareaControl(s, v) {
+    var ta = el("textarea"); ta.value = v;
+    ta.oninput = function () { clearFieldStatus(s.key); cancelApplying(s.key); };
+    ta.onblur  = function () { applyChange(s.key, ta.value); };
+    return ta;
+  }
+
+  function segmentedControl(s, v) {
+    var wrap = el("div", "segmented");
+    s["enum"].forEach(function (opt) {
+      var b = el("button", v === opt ? "sel" : "", opt);
+      b.onclick = function () {
+        v = opt;
+        wrap.querySelectorAll("button").forEach(function (x) { x.classList.remove("sel"); });
+        b.classList.add("sel");
+        applyChange(s.key, opt);
+      };
+      wrap.appendChild(b);
+    });
+    return wrap;
+  }
+
+  function tagControl(s, v) {
+    var arr = v.slice();
+    var wrap = el("div", "tags");
+    var list = el("div", "taglist");
+    var input = el("input", "taginput"); input.placeholder = "add\u2026 (Enter)";
+    function redraw() {
+      list.innerHTML = "";
+      arr.forEach(function (t, i) {
+        var tag = el("span", "tag", t + "  \u00d7");
+        tag.onclick = function () {
+          arr.splice(i, 1);
+          applyChange(s.key, arr.slice()); redraw();
+        };
+        list.appendChild(tag);
+      });
+      if (arr.length === 0) list.appendChild(el("span", "card-blurb", "(none)"));
+    }
+    input.onkeydown = function (e) {
+      if (e.key === "Enter" && input.value.trim()) {
+        arr.push(input.value.trim()); input.value = "";
+        applyChange(s.key, arr.slice()); redraw(); e.preventDefault();
+      }
+    };
+    redraw();
+    wrap.appendChild(list); wrap.appendChild(input);
+    return wrap;
+  }
+
+  function attrsControl(s, v) {
+    var ta = el("textarea");
+    ta.value = Object.keys(v).map(function (u) { return u + ": " + v[u].join(" "); }).join("\n");
+    ta.placeholder = "root: ssh-ed25519 AAAA...";
+    ta.oninput = function () { clearFieldStatus(s.key); cancelApplying(s.key); };
+    ta.onblur = function () {
+      var obj = {};
+      ta.value.split("\n").forEach(function (line) {
+        var idx = line.indexOf(":");
+        if (idx > 0) {
+          var u = line.slice(0, idx).trim();
+          var ks = line.slice(idx + 1).trim().split(/\s+/).filter(Boolean);
+          if (u) obj[u] = ks;
+        }
+      });
+      applyChange(s.key, obj);
+    };
+    return ta;
+  }
+
+  // ---- setting card --------------------------------------------------------
+  function cssId(key) { return key.replace(/[^a-z0-9]/gi, "_"); }
+
+  function settingCard(key) {
+    var s        = resolveSetting(key);
+    var price    = priceOf(s);
+    var unattr   = unattributedPriceOf(s);
+    var isStaged = Object.prototype.hasOwnProperty.call(staged, key);
+    var managed  = nixManaged(key);
+    var isLocked = locked(key);
+    var card = el("div", "card");
+    card.id  = "card-" + cssId(key);
+    if (isStaged) card.classList.add("modified");
+    if (managed) card.classList.add("card-nix-managed");
+
+    var head  = el("div", "card-head");
+    var left  = el("div");
+    var title = el("div", "card-title");
+    title.appendChild(el("span", null, s.label));
+    var dot = el("span", "modified-dot", "\u25cf");
+    dot.style.display = isStaged ? "" : "none";
+    dot.dataset.role  = "dot";
+    title.appendChild(dot);
+    left.appendChild(title);
+    head.appendChild(left);
+
+    // Developer mode surfaces the implementation badges; user mode stays clean.
+    if (devMode) {
+      var badges = el("div", "badges");
+      badges.appendChild(priceBadge(price));
+      // Config-managed settings show their source link in place of provenance.
+      badges.appendChild(managed ? nixBadge(key) : provBadge(s));
+      head.appendChild(badges);
+    }
+    card.appendChild(head);
+
+    if (s.blurb) card.appendChild(el("div", "card-blurb", s.blurb));
+
+    var ctrl = el("div", "card-control");
+    // Locked (user mode): read-only. Unlocked (dev mode) or GUI-owned: editable.
+    ctrl.appendChild(isLocked ? nixValueDisplay(s) : buildControl(s));
+    card.appendChild(ctrl);
+
+    // User mode: tell the reader how to edit a config-managed setting.
+    if (isLocked) {
+      var hint = el("div", "nix-lock-hint");
+      hint.appendChild(document.createTextNode("Managed by Nix. Enable "));
+      hint.appendChild(el("b", null, "Developer Mode"));
+      hint.appendChild(document.createTextNode(" to edit."));
+      card.appendChild(hint);
+    }
+
+    // Developer mode exposes the Nix expression for every editable setting.
+    if (devMode && !isLocked) card.appendChild(nixCopyBlock(key));
+
+    var status = el("div", "field-status");
+    status.id = "status-" + cssId(key);
+    status.style.display = "none";
+    card.appendChild(status);
+
+    // Staged banner applies to editable settings; why-panel is dev-only.
+    if (!isLocked) {
+      if (devMode) card.appendChild(whyPanel(s, price, unattr));
+      if (price === "reboot") {
+        var banner = el("div", "staged-banner");
+        banner.id  = "banner-" + cssId(key);
+        banner.style.display = isStaged ? "" : "none";
+        banner.appendChild(el("span", "staged-banner-msg", "Staged \u00b7 applies after restart"));
+        var acts = el("div", "staged-banner-actions");
+        var rbtn = el("button", "btn primary", "Restart now");
+        rbtn.style.fontSize = "0.78rem"; rbtn.style.padding = "0.25rem 0.6rem";
+        rbtn.onclick = function () { openRebootDialog(); };
+        var kbtn = el("button", "btn ghost", "Keep for next restart");
+        kbtn.style.fontSize = "0.78rem"; kbtn.style.padding = "0.25rem 0.6rem";
+        acts.appendChild(rbtn); acts.appendChild(kbtn);
+        banner.appendChild(acts);
+        card.appendChild(banner);
+      }
+    }
+
+    return card;
+  }
+
+  function markCard(key) {
+    var card = document.getElementById("card-" + cssId(key));
+    if (!card) return;
+    var isStaged = Object.prototype.hasOwnProperty.call(staged, key);
+    card.classList.toggle("modified", isStaged);
+    var dot = card.querySelector('[data-role="dot"]');
+    if (dot) dot.style.display = isStaged ? "" : "none";
+    var banner = document.getElementById("banner-" + cssId(key));
+    if (banner) banner.style.display = isStaged ? "" : "none";
+    // Pulse for live apply
+    if (!isStaged) {
+      card.classList.remove("pulse"); void card.offsetWidth; card.classList.add("pulse");
+    }
+    // App cards reflect install state through their own button.
+    if (card._refresh) card._refresh();
+  }
+
+  // ---- why panel -----------------------------------------------------------
+  function whyPanel(s, price, unattr) {
+    var attr = MODEL.attribution[s.key] || {};
+    var d = el("details", "why");
+    d.appendChild(el("summary", null, "Why " + MODEL.classMeta[price].label.toLowerCase() + "?"));
+    var body = el("div", "why-body");
+
+    var contracts = attributedContracts(s.key, s.publish);
+    var deriv = "how it applies = the strongest effect among the parts this setting changes:\n";
+    contracts.forEach(function (c) {
+      deriv += "  " + c + " \u2192 " + MODEL.classMeta[classForContract(s.key, c)].label + "\n";
+    });
+    deriv += "= " + MODEL.classMeta[price].label;
+    body.appendChild(divRow(el("div", "derivation", deriv)));
+
+    if (attr.note)      body.appendChild(divRow(el("div", null, attr.note)));
+    if (attr.mechanism) body.appendChild(divRow(labelled("Mechanism: ", attr.mechanism)));
+    if (attr.alt)       body.appendChild(divRow(labelled("Needs more when: ", attr.alt)));
+    if (attr.cite)      body.appendChild(divRow(citeEl(attr.cite)));
+
+    var pubNames = s.publish.map(contractName).join(", ");
+    body.appendChild(divRow(textWithCode("parts this module produces: ", pubNames || "(none)")));
+    if (unattr && unattr !== price) {
+      var fullContracts = s.publish.map(contractName).filter(function (c) {
+        return MODEL.contractBaseClass[c] != null;
+      });
+      var narrowed = attributedContracts(s.key, s.publish).length < fullContracts.length;
+      var note = el("div");
+      note.appendChild(document.createTextNode("Without this mapping it would round up to "));
+      note.appendChild(el("b", null, MODEL.classMeta[unattr].label.toLowerCase()));
+      note.appendChild(document.createTextNode(narrowed
+        ? ". It reflects only the parts this setting actually changes."
+        : ". This setting applies through the live overlay; folding it into the sealed image needs a restart."));
+      body.appendChild(divRow(note));
+    }
+    d.appendChild(body);
+    return d;
+  }
+
+  function labelled(label, text) {
+    var r = el("div");
+    r.appendChild(el("b", null, label));
+    r.appendChild(document.createTextNode(text));
+    return r;
+  }
+  function divRow(child) { var r = el("div", "row"); r.appendChild(child); return r; }
+  function citeEl(text) { return el("div", "cite", "cite: " + text); }
+  function textWithCode(label, code) {
+    var r = el("div");
+    r.appendChild(document.createTextNode(label));
+    r.appendChild(el("code", null, code));
+    return r;
+  }
+
+  // ---- helper: one-key plain object ----------------------------------------
+  function defineObj(key, val) { var o = {}; o[key] = val; return o; }
+
+  // ---- panes ---------------------------------------------------------------
+  function renderPane() {
+    var pane = document.getElementById("pane");
+    pane.innerHTML = "";
+    if (current === "appstore")  return renderAppStore(pane);
+    if (current === "desktop")   return renderDesktop(pane);
+    if (current === "prices")    return renderPrices(pane);
+    if (current === "crosswalk") return renderCrosswalk(pane);
+    return renderCategory(pane, current);
+  }
+
+  function renderCategory(pane, catId) {
+    var cat = MODEL.categories.find(function (c) { return c.id === catId; });
+    pane.appendChild(el("h2", null, cat.name));
+    if (cat.blurb) pane.appendChild(el("p", "pane-sub", cat.blurb));
+    cat.items.forEach(function (key) { pane.appendChild(settingCard(key)); });
+  }
+
+  function renderDesktop(pane) {
+    pane.appendChild(el("h2", null, "Display & Input"));
+    pane.appendChild(el("p", "pane-sub", "Personal preferences"));
+    MODEL.illustrative.forEach(function (it) { pane.appendChild(instantCard(it)); });
+  }
+
+  function instantCard(it) {
+    var card  = el("div", "card");
+    var head  = el("div", "card-head");
+    var left  = el("div");
+    var title = el("div", "card-title");
+    title.appendChild(el("span", null, it.label));
+    var applied = el("span", "applied-tag", "applied"); title.appendChild(applied);
+    left.appendChild(title);
+    head.appendChild(left);
+    if (devMode) {
+      var badges = el("div", "badges");
+      badges.appendChild(priceBadge("instant"));
+      badges.appendChild(el("span", "badge prov prov-illustrative", "illustrative"));
+      head.appendChild(badges);
+    }
+    card.appendChild(head);
+    if (it.blurb) card.appendChild(el("div", "card-blurb", it.blurb));
+    var ctrl = el("div", "card-control");
+    function pulse() {
+      card.classList.remove("pulse"); void card.offsetWidth; card.classList.add("pulse");
+      applied.classList.add("show");
+      clearTimeout(card._t); card._t = setTimeout(function () { applied.classList.remove("show"); }, 1100);
+    }
+    if (it.kind === "bool") {
+      ctrl.appendChild(toggleControl({ key: it.id }, it["default"], function () { pulse(); }));
+    } else if (it.kind === "int") {
+      var i = el("input"); i.type = "number"; i.value = it["default"];
+      if (it.unit) {
+        var w = el("div"); w.style.display = "inline-flex"; w.style.alignItems = "center"; w.style.gap = "0.4rem";
+        w.appendChild(i); w.appendChild(el("span", "card-blurb", it.unit)); ctrl.appendChild(w);
+      } else ctrl.appendChild(i);
+      i.oninput = pulse;
+    } else {
+      var t = el("input"); t.type = "text"; t.value = it["default"]; t.oninput = pulse; ctrl.appendChild(t);
+    }
+    card.appendChild(ctrl);
+    return card;
+  }
+
+  function renderAppStore(pane) {
+    pane.appendChild(el("h2", null, "App Store"));
+    pane.appendChild(el("p", "pane-sub", "Apps install live over the sealed system, without a restart."));
+    var grid = el("div", "app-grid");
+    (MODEL.apps || []).forEach(function (app) { grid.appendChild(appCard(app)); });
+    pane.appendChild(grid);
+  }
+
+  function appCard(app) {
+    var key  = "app:" + app.id;
+    var card = el("div", "app-card");
+    card.id  = "card-" + cssId(key);
+    card.appendChild(el("div", "app-avatar", app.name.charAt(0)));
+    var body = el("div", "app-body");
+    body.appendChild(el("div", "app-name", app.name));
+    body.appendChild(el("div", "app-blurb", app.blurb));
+    card.appendChild(body);
+    var btn = el("button", "btn");
+    function refresh() {
+      var inflight  = applying[key];
+      var installed = baseline[key] === true;
+      if (inflight) {
+        btn.textContent = inflight.target ? "Installing\u2026" : "Removing\u2026";
+        btn.className   = "btn pending";
+        btn.disabled    = true;
+      } else {
+        btn.textContent = installed ? "Installed" : "Install";
+        btn.className   = "btn" + (installed ? " installed" : " primary");
+        btn.disabled    = false;
+      }
+    }
+    card._refresh = refresh; // markCard calls this when the apply settles
+    btn.onclick = function () {
+      if (applying[key]) return; // already installing or removing
+      var newVal = !(baseline[key] === true);
+      beginApply(key, newVal, "install", null);
+      refresh(); // show Installing… / Removing… at once
+    };
+    refresh();
+    var action = el("div", "app-action"); action.appendChild(btn);
+    card.appendChild(action);
+    return card;
+  }
+
+  function renderPrices(pane) {
+    pane.appendChild(el("h2", null, "How changes apply"));
+    pane.appendChild(el("p", "pane-sub",
+      "Each label is worked out from the system itself, so it stays honest as the OS changes."));
+
+    var layers = el("div", "panel-block");
+    layers.appendChild(el("h3", null, "Where each label comes from"));
+    [
+      ["The settings",         "Every setting here is read from the OS\u2019s own definitions, so this list cannot drift from the system it describes."],
+      ["What it takes to apply","Each kind of change applies a known way: re-read on next use, a service reload, a service reconnect, or a restart. cite: systemd 260.1, OpenSSH 10.3p1, linux-pam 1.7.1."],
+      ["What it touches",       "Each setting is mapped to the parts of the system it changes, so its label reflects only those parts."]
+    ].forEach(function (p) {
+      var d = el("div", "layer");
+      d.appendChild(el("b", null, p[0] + ". "));
+      d.appendChild(document.createTextNode(p[1]));
+      layers.appendChild(d);
+    });
+    layers.appendChild(el("p", null,
+      "A change takes the strongest effect among the parts it touches. "
+      + "When that is uncertain, it rounds up: a setting never claims to apply faster than it does."));
+    pane.appendChild(layers);
+
+    var ladder = el("div", "panel-block");
+    ladder.appendChild(el("h3", null, "What the labels mean"));
+    var t1 = el("table");
+    t1.appendChild(rowTH(["When it applies", "Meaning", "On macOS"]));
+    MODEL.classes.forEach(function (c) {
+      var m  = MODEL.classMeta[c];
+      var tr = el("tr");
+      var td0 = el("td"); td0.appendChild(priceBadge(c)); tr.appendChild(td0);
+      tr.appendChild(el("td", null, m.blurb));
+      tr.appendChild(el("td", null, m.macos));
+      t1.appendChild(tr);
+    });
+    ladder.appendChild(t1);
+    pane.appendChild(ladder);
+
+    var ct = el("div", "panel-block");
+    ct.appendChild(el("h3", null, "How each part of the system applies a change"));
+    ct.appendChild(el("p", null,
+      "/etc is the writable overlay, so a change there needs at most a reconnect. Only the sealed image needs a restart of the computer."));
+    var t2 = el("table");
+    t2.appendChild(rowTH(["Part of the system", "When it applies", "Why", "Source"]));
+    Object.keys(MODEL.contractBaseClass).forEach(function (c) {
+      var tr = el("tr");
+      tr.appendChild(el("td", null, c));
+      var td1 = el("td"); td1.appendChild(priceBadge(MODEL.contractBaseClass[c])); tr.appendChild(td1);
+      tr.appendChild(el("td", null, MODEL.contractClassNote[c] || ""));
+      tr.appendChild(el("td", null, MODEL.contractClassCite[c] || ""));
+      t2.appendChild(tr);
+    });
+    ct.appendChild(t2);
+    pane.appendChild(ct);
+
+    var prov = el("div", "panel-block");
+    prov.appendChild(el("h3", null, "What the badges mean"));
+    var legend = el("div"); legend.style.display = "flex"; legend.style.flexDirection = "column"; legend.style.gap = "0.5rem";
+    [
+      ["prov-contract",     "contract: <module>",                         "A setting that exists in the OS today, read from its module."],
+      ["prov-pipeline",     "contract pipeline \u00b7 synthesized knob",  "The underlying system part is real, but the module does not expose this control yet. Its label still uses the real system part."],
+      ["prov-illustrative", "illustrative",                                "A desktop control not yet wired to the OS. It shows the target experience."]
+    ].forEach(function (p) {
+      var row = el("div"); row.style.display = "flex"; row.style.gap = "0.6rem"; row.style.alignItems = "baseline";
+      row.appendChild(el("span", "badge prov " + p[0], p[1]));
+      row.appendChild(el("span", "card-blurb", p[2]));
+      legend.appendChild(row);
+    });
+    prov.appendChild(legend);
+    pane.appendChild(prov);
+  }
+
+  function rowTH(cells) {
+    var tr = el("tr");
+    cells.forEach(function (c) { tr.appendChild(el("th", null, c)); });
+    return tr;
+  }
+
+  function renderCrosswalk(pane) {
+    var cw = MODEL.crosswalk;
+    pane.appendChild(el("h2", null, "macOS crosswalk"));
+    pane.appendChild(el("p", "pane-sub",
+      "You already live with a sealed, signed OS that updates and restarts. ThermOS is the same shape."));
+
+    var intro = el("div", "panel-block");
+    intro.appendChild(el("h3", null, "SSV \u2248 dm-verity"));
+    intro.appendChild(el("p", null, cw.intro));
+    pane.appendChild(intro);
+
+    var b1  = el("div", "panel-block");
+    b1.appendChild(el("h3", null, cw.part1Title));
+    b1.appendChild(el("p",  null, cw.part1Note));
+    var tb1 = el("table");
+    tb1.appendChild(rowTH(["macOS setting", "Tier", "ThermOS analog"]));
+    cw.part1.forEach(function (r) {
+      var tr = el("tr");
+      tr.appendChild(el("td", null, r.setting));
+      var td = el("td"); td.appendChild(priceBadge(r.tier)); tr.appendChild(td);
+      tr.appendChild(el("td", null, r.thermos));
+      tb1.appendChild(tr);
+    });
+    b1.appendChild(tb1);
+    pane.appendChild(b1);
+
+    var b2  = el("div", "panel-block");
+    b2.appendChild(el("h3", null, cw.part2Title));
+    var tb2 = el("table");
+    tb2.appendChild(rowTH(["macOS modification", "Tier", "ThermOS mechanism"]));
+    cw.part2.forEach(function (r) {
+      var tr = el("tr");
+      tr.appendChild(el("td", null, r.mod));
+      var td = el("td"); td.appendChild(priceBadge(r.tier)); tr.appendChild(td);
+      tr.appendChild(el("td", null, r.thermos));
+      tb2.appendChild(tr);
+    });
+    b2.appendChild(tb2);
+    pane.appendChild(b2);
+  }
+
+  // ---- boot ----------------------------------------------------------------
+  mountDevModeToggle();
+  renderSidebar();
+  renderPane();
+})();
+</script>
+</body>
+</html>
