@@ -24,7 +24,7 @@
     };
     shell = {
       type = types.str;
-      default = "/sbin/nologin";
+      default = "/bin/nologin";
     };
     gecos = {
       type = types.str;
