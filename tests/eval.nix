@@ -1377,6 +1377,16 @@ in
       expected = "oneshot";
     };
 
+    testKeygenOrdering = {
+      expr =
+        let
+          impl = ev.modules.services.modules.openssh { };
+          unit = head (filter (u: u.unitName == "sshd-keygen-ed25519.service") impl.units);
+        in
+        unit.unitConfig.Unit.Before;
+      expected = [ "sshd-keygen.target" ];
+    };
+
     testKeygenTarget = {
       expr =
         let

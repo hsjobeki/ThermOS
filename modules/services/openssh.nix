@@ -120,6 +120,7 @@
           Unit = {
             Description = "OpenSSH ${keyType} Host Key Generation";
             ConditionPathExists = "!/var/lib/ssh/ssh_host_${keyType}_key";
+            Before = [ "sshd-keygen.target" ];
           };
           Service = {
             Type = "oneshot";
