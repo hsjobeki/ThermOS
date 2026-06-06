@@ -4,12 +4,18 @@ import ../default.nix {
       # Password: thermos
       rootHashedPassword = "$6$thermos$H0ll22GovTVsmgXyGSxBB1rAwU.QF6D/nFspidCXj0vFJ6YzUUzhs1r8/mEiXnb0IUUP8t2tChAmwA.vEXH9G/";
     };
-    # Static IP on QEMU user-mode (SLIRP) net. DHCP needs AF_PACKET, which the
-    # kernel lacks (CONFIG_PACKET=m, unloaded), so DHCP cannot work yet.
+    # Force-load af_packet in the initrd (it persists across switch_root) so the
+    # AF_PACKET socket family is available to systemd-networkd's DHCP client.
+    # The kernel ships it as a module (CONFIG_PACKET=m); without this load,
+    # socket(AF_PACKET) returns EAFNOSUPPORT and DHCP silently fails. Publishes
+    # {af_packet, initrd, force} to /contracts/kernel-modules.
+    "/core/initrd-network" = {
+      enable = true;
+    };
+    # QEMU user-mode (SLIRP) runs a built-in DHCP server.
     "/services/networkd" = {
       enable = true;
-      useDHCP = false;
-      addresses = [ "10.0.2.15/24" ];
+      useDHCP = true;
     };
     "/services/getty" = {
       ttys = [ ];

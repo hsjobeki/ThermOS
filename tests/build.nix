@@ -9,6 +9,36 @@ let
   rootfsDrv = thermos.rootfs;
   usersDrv = (ev.modules.builders.modules.users { }).derivation;
   etcDrv = (ev.modules.builders.modules.etc { }).derivation;
+  types = ev.types;
+
+  # Stage-2 substrate: drive the kernel-modules builder with a synthetic
+  # (system, force) + (system, available) publish, mirroring a real service.
+  kmImpl = (import ../modules/builders/kernel-modules.nix { inherit types; }).impl;
+  kmResult = kmImpl {
+    inputs.nixpkgs = {
+      inherit pkgs;
+      lib = pkgs.lib;
+    };
+    subscriptions."kernel-modules" = [
+      {
+        name = "loop";
+        stage = "system";
+        mode = "force";
+      }
+      {
+        name = "dummy";
+        stage = "system";
+        mode = "available";
+      }
+    ];
+  };
+  kmClosure = kmResult.derivation;
+  kmConf = (builtins.head kmResult.etc).text;
+  kmPackagesEnv = pkgs.buildEnv {
+    name = "thermos-km-test-env";
+    paths = map (p: p.package) kmResult.packages;
+  };
+  kernelVersion = pkgs.linuxPackages.kernel.modDirVersion;
 in
 {
   # Structural INI validation (semantic verify needs /run/systemd/, see container tests)
@@ -103,6 +133,12 @@ in
     done
 
     test -d ${rootfsDrv}/nix/store || { echo "FAIL: /nix/store missing"; exit 1; }
+
+    # Stage-2 kernel module dir: a symlink that must resolve. Empty closure by
+    # default (no stage=system publisher in the base config).
+    test -L ${rootfsDrv}/lib/modules || { echo "FAIL: /lib/modules not a symlink"; exit 1; }
+    test -d ${rootfsDrv}/lib/modules || { echo "FAIL: /lib/modules does not resolve"; exit 1; }
+    echo "  /lib/modules ok"
 
     echo "rootfs ok"
     mkdir -p $out
@@ -238,4 +274,42 @@ in
     mkdir -p $out
     echo "paths verified" > $out/result
   '';
+  # Synthetic stage-2 build: the kernel-modules builder turns a (system, force)
+  # + (system, available) publish into a depmod-resolvable /lib/modules closure,
+  # a modules-load.d conf listing only force names, and kmod tooling.
+  kernelModulesSubstrate = pkgs.runCommand "thermos-test-kernel-modules" { } ''
+    echo "kernel-modules substrate"
+
+    ver=$(ls ${kmClosure}/lib/modules)
+    echo "  version: $ver"
+    if [ "$ver" != "${kernelVersion}" ]; then
+      echo "FAIL: closure version $ver != kernel ${kernelVersion}"
+      exit 1
+    fi
+
+    test -f ${kmClosure}/lib/modules/$ver/modules.dep || { echo "FAIL: modules.dep missing"; exit 1; }
+
+    # force module present in the tree
+    find ${kmClosure}/lib/modules -name 'loop.ko*' | grep -q . || { echo "FAIL: loop.ko missing"; exit 1; }
+    echo "  loop.ko ok"
+
+    # available module present in the tree for udev modalias autoload
+    find ${kmClosure}/lib/modules -name 'dummy.ko*' | grep -q . || { echo "FAIL: dummy.ko missing"; exit 1; }
+    echo "  dummy.ko ok"
+
+    # modules-load.d lists the force module only; available is autoloaded by udev
+    conf=${pkgs.writeText "thermos-test-modules-load" kmConf}
+    grep -qx 'loop' "$conf" || { echo "FAIL: modules-load.d missing loop"; cat "$conf"; exit 1; }
+    if grep -qx 'dummy' "$conf"; then echo "FAIL: available module dummy must not be force-loaded"; exit 1; fi
+    echo "  modules-load.d ok"
+
+    # kmod tooling shipped alongside the substrate
+    test -e ${kmPackagesEnv}/bin/modprobe || { echo "FAIL: modprobe missing from packages"; exit 1; }
+    echo "  modprobe ok"
+
+    echo "substrate ok"
+    mkdir -p $out
+    echo "kernel-modules substrate verified" > $out/result
+  '';
+
 }

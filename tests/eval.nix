@@ -11,6 +11,12 @@ let
   usersContract = (import ../modules/contracts/users.nix { inherit types; }).contract;
   groupsContract = (import ../modules/contracts/groups.nix { inherit types; }).contract;
   pamContract = (import ../modules/contracts/pam.nix { inherit types; }).contract;
+  kernelModulesContract =
+    (import ../modules/contracts/kernel-modules.nix { inherit types; }).contract;
+  # Options from the framework-loaded module: it carries the real Korora types
+  # (enum, etc.). A fresh import with evaluated.types lacks them.
+  kernelModulesOptions = ev.modules.contracts.modules."kernel-modules".options;
+  initrdImpl = (import ../modules/builders/initrd.nix { inherit types; }).impl;
 
   ev = thermos.evaluated;
 
@@ -653,6 +659,106 @@ in
         };
       };
     };
+    "kernel-modules" = {
+      testMergeDedupesTuples = {
+        expr = kernelModulesContract.merge {
+          a = [
+            {
+              name = "af_packet";
+              stage = "initrd";
+              mode = "force";
+            }
+          ];
+          b = [
+            {
+              name = "af_packet";
+              stage = "initrd";
+              mode = "force";
+            }
+            {
+              name = "loop";
+              stage = "system";
+              mode = "available";
+            }
+          ];
+        };
+        expected = [
+          {
+            name = "af_packet";
+            stage = "initrd";
+            mode = "force";
+          }
+          {
+            name = "loop";
+            stage = "system";
+            mode = "available";
+          }
+        ];
+      };
+
+      testMergeKeepsSameNameAcrossCells = {
+        # A name may appear in distinct (stage, mode) cells; only exact tuples dedupe.
+        expr = length (
+          kernelModulesContract.merge {
+            a = [
+              {
+                name = "e1000e";
+                stage = "initrd";
+                mode = "available";
+              }
+            ];
+            b = [
+              {
+                name = "e1000e";
+                stage = "system";
+                mode = "force";
+              }
+            ];
+          }
+        );
+        expected = 2;
+      };
+
+      testMergeAcceptsInitrdAvailable = {
+        # (initrd, available) is valid contract vocab; the initrd builder, not the
+        # contract, rejects it (no udev in the busybox initrd).
+        expr = length (
+          kernelModulesContract.merge {
+            a = [
+              {
+                name = "e1000e";
+                stage = "initrd";
+                mode = "available";
+              }
+            ];
+          }
+        );
+        expected = 1;
+      };
+
+      testStageEnumRejects = {
+        # stage/mode are enum-typed: an out-of-vocab value is rejected by the
+        # field type at publish validation, not by merge.
+        expr = kernelModulesOptions.stage.type.verify "stage1";
+        expected = "'\"stage1\"' is not a member of enum 'stage'";
+      };
+
+      testStageEnumAccepts = {
+        expr = kernelModulesOptions.stage.type.verify "initrd";
+        expected = null;
+      };
+
+      testModeEnumRejects = {
+        expr = kernelModulesOptions.mode.type.verify "maybe";
+        expected = "'\"maybe\"' is not a member of enum 'mode'";
+      };
+
+      testMergeEmpty = {
+        expr = kernelModulesContract.merge { };
+        expected = [ ];
+      };
+    };
+
   };
   # tree structure
 
@@ -675,6 +781,7 @@ in
         "assertions"
         "etc"
         "groups"
+        "kernel-modules"
         "packages"
         "pam"
         "tmpfiles"
@@ -689,6 +796,7 @@ in
         "etc"
         "image"
         "initrd"
+        "kernel-modules"
         "packages"
         "rootfs"
         "tmpfiles"
@@ -700,7 +808,10 @@ in
 
     testCoreChildren = {
       expr = attrNames ev.modules.core.modules;
-      expected = [ "base" ];
+      expected = [
+        "base"
+        "initrd-network"
+      ];
     };
 
     testServiceChildren = {
@@ -929,7 +1040,7 @@ in
       expected = "systemd-network";
     };
 
-    testDhcpGuardAssertionFails = {
+    testDhcpAssertionsPass = {
       expr =
         let
           impl = ev.modules.services.modules.networkd {
@@ -938,7 +1049,7 @@ in
           };
         in
         all (a: a.assertion) impl.assertions;
-      expected = false;
+      expected = true;
     };
 
     testStaticAssertionsPass = {
@@ -972,7 +1083,7 @@ in
       expected = [ ];
     };
 
-    testTreeRejectsDhcp = {
+    testTreeAcceptsDhcp = {
       expr =
         let
           configured = import ../default.nix {
@@ -984,9 +1095,89 @@ in
             };
           };
         in
-        (configured.evaluated.modules.builders.modules.toplevel { }).derivation;
+        (configured.evaluated.modules.builders.modules.toplevel { }).derivation.type or null;
+      expected = "derivation";
+    };
+  };
+
+  # kernel modules: initrd-network publisher + initrd builder stage handling
+  kernelModules = {
+    testInitrdNetworkEnabled = {
+      expr = (ev.modules.core.modules."initrd-network" { enable = true; })."kernel-modules";
+      expected = [
+        {
+          name = "af_packet";
+          stage = "initrd";
+          mode = "force";
+        }
+      ];
+    };
+
+    testInitrdNetworkDisabled = {
+      expr = (ev.modules.core.modules."initrd-network" { })."kernel-modules";
+      expected = [ ];
+    };
+
+    testInitrdForceModuleBuilds = {
+      expr =
+        (initrdImpl {
+          inputs.nixpkgs = { inherit (thermos) pkgs lib; };
+          options.kernelModules = [ "ext4" ];
+          subscriptions."kernel-modules" = [
+            {
+              name = "af_packet";
+              stage = "initrd";
+              mode = "force";
+            }
+          ];
+        }).derivation.type or null;
+      expected = "derivation";
+    };
+
+    testInitrdAvailableThrows = {
+      expr =
+        (initrdImpl {
+          inputs.nixpkgs = { inherit (thermos) pkgs lib; };
+          options.kernelModules = [ "ext4" ];
+          subscriptions."kernel-modules" = [
+            {
+              name = "e1000e";
+              stage = "initrd";
+              mode = "available";
+            }
+          ];
+        }).derivation.drvPath;
       expectedError.type = "ThrownError";
-      expectedError.msg = "Assertion failed: networkd: dhcp is not yet implemented";
+      expectedError.msg = ".*initrd, available.*udev.*";
+    };
+
+    testInitrdIgnoresSystemModules = {
+      # stage=system modules must not enter the initrd; builder still succeeds.
+      expr =
+        (initrdImpl {
+          inputs.nixpkgs = { inherit (thermos) pkgs lib; };
+          options.kernelModules = [ "ext4" ];
+          subscriptions."kernel-modules" = [
+            {
+              name = "loop";
+              stage = "system";
+              mode = "force";
+            }
+          ];
+        }).derivation.type or null;
+      expected = "derivation";
+    };
+
+    testBuilderDormantByDefault = {
+      # No (system, *) publisher in the default tree: empty etc + packages.
+      expr = {
+        etc = (ev.modules.builders.modules."kernel-modules" { }).etc;
+        packages = (ev.modules.builders.modules."kernel-modules" { }).packages;
+      };
+      expected = {
+        etc = [ ];
+        packages = [ ];
+      };
     };
   };
 

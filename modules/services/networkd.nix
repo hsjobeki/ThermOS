@@ -39,8 +39,6 @@
 
         [Network]
         ${networkSection}
-        LLDP=no
-        EmitLLDP=no
       '';
     in
     if !options.enable then
@@ -79,17 +77,11 @@
             text = networkFile;
           }
         ];
-        # We do not yet support dhcp.
-        # Therefore static-ip needs to be configured.
-        # TODO: Adopt these assertions, when dhcp support is added
+        # A network must declare either DHCP or a static address.
         assertions = [
           {
             assertion = options.useDHCP || options.addresses != [ ];
             message = "networkd: addresses must be statically configured when dhcp is disabled";
-          }
-          {
-            assertion = !options.useDHCP;
-            message = "networkd: dhcp is not yet implemented";
           }
         ];
       };

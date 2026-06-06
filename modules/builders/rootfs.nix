@@ -21,6 +21,7 @@
       unitsDrv = results.toplevelBuilder.builders.units;
       tmpfilesDrv = results.toplevelBuilder.builders.tmpfiles;
       usersDrv = results.toplevelBuilder.builders.users;
+      kernelModulesDrv = results.toplevelBuilder.builders.kernelModules;
 
       systemdBin = "${pkgs.systemd}/lib/systemd/systemd";
     in
@@ -111,6 +112,12 @@
             done
           fi
         done
+
+        # Module tree for the running system, at /lib/modules where the loader
+        # (modprobe, udev) looks. Empty until a service publishes (system, *)
+        # modules; built by /builders/kernel-modules.
+        mkdir -p $out/lib
+        ln -s ${kernelModulesDrv}/lib/modules $out/lib/modules
 
         # nspawn needs these dirs to exist
         mkdir -p $out/{proc,sys,dev,run,tmp,var}

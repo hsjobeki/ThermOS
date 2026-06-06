@@ -23,6 +23,9 @@
     usersBuilder = {
       path = "/builders/users";
     };
+    kernelModulesBuilder = {
+      path = "/builders/kernel-modules";
+    };
   };
 
   impl =
@@ -52,6 +55,7 @@
         units = results.unitsBuilder.derivation;
         tmpfiles = results.tmpfilesBuilder.derivation;
         users = results.usersBuilder.derivation;
+        kernelModules = results.kernelModulesBuilder.derivation;
       };
 
       derivation = pkgs.runCommand "thermos-system" { } ''
