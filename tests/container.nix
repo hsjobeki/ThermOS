@@ -196,6 +196,9 @@ in
       sshKeys = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
       sshThermos = import ../default.nix {
         options = {
+          "/core/initrd-network" = {
+            enable = true;
+          };
           "/services/networkd" = {
             enable = true;
             useDHCP = false;
