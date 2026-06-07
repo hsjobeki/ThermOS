@@ -2,6 +2,7 @@
 let
   thermos = import ../default.nix { };
   pkgs = thermos.pkgs;
+  thermosLib = import ./lib.nix;
 
   unitsDrv = (thermos.evaluated.modules.builders.modules.units { }).derivation;
   usersDrv = (thermos.evaluated.modules.builders.modules.users { }).derivation;
@@ -230,7 +231,7 @@ in
           virtualisation.vlans = [ 1 ];
         };
 
-      testScript = ''
+      testScript = thermosLib.pythonPreamble + ''
         start_all()
 
         client.wait_for_unit("multi-user.target")
@@ -239,21 +240,20 @@ in
         client.succeed("cp ${sshKeys.snakeOilEd25519PrivateKey} /root/.ssh/id_ed25519")
         client.succeed("chmod 600 /root/.ssh/id_ed25519")
 
-        thermos = create_machine(
-            start_command="${pkgs.qemu_kvm}/bin/qemu-system-x86_64"
+        start_command = (
+            "${pkgs.qemu_kvm}/bin/qemu-system-x86_64"
             " -m 512 -enable-kvm"
             " -kernel ${kernel}/bzImage"
             " -initrd ${initrd}/initrd"
             " -append 'root=/dev/vda console=ttyS0 loglevel=4'"
             " -drive file=${image},if=virtio,format=raw,snapshot=on"
             " -netdev vde,id=vlan1,sock=$QEMU_VDE_SOCKET_1"
-            " -device virtio-net-pci,netdev=vlan1,mac=52:54:00:12:01:02",
-            name="thermos"
+            " -device virtio-net-pci,netdev=vlan1,mac=52:54:00:12:01:02"
         )
-        thermos.start()
 
         ssh_opts = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5"
-        try:
+
+        with thermos_vm("thermos", start_command) as thermos:
             client.wait_until_succeeds(
                 f"ssh {ssh_opts} root@192.168.1.2 true",
                 timeout=120
@@ -264,13 +264,6 @@ in
 
             result = client.succeed(f"ssh {ssh_opts} root@192.168.1.2 whoami")
             assert "root" in result, f"unexpected user: {result}"
-        finally:
-            # crash() quits QEMU via the host-side monitor. shutdown() sends
-            # poweroff to a guest shell backdoor ThermOS does not run, and
-            # graceful poweroff needs polkit/logind, so it would hang.
-            # create_machine VMs are not registered in the driver's self.machines,
-            # so the driver will not auto-clean them on failure.
-            thermos.crash()
       '';
     };
 }
