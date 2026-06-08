@@ -53,57 +53,30 @@ in
     expected = 5;
   };
 
+  # unit: contracts/pam merge
   testSshdPatternIntegration = {
     expr =
       let
-        # What openssh would publish
-        sshdRules = [
-          {
-            name = "sshd";
-            rules = [
-              {
-                type = "auth";
-                control = "required";
-                module = "pam_unix";
-                args = "nullok";
-              }
-              {
-                type = "account";
-                control = "required";
-                module = "pam_unix";
-              }
-              {
-                type = "session";
-                control = "required";
-                module = "pam_unix";
-              }
-              {
-                type = "session";
-                control = "optional";
-                module = "pam_loginuid";
-              }
-            ];
-          }
-        ];
-        # What base publishes
-        baseRules = (tree.modules.core.modules.base { }).pam;
-        # Merge like the contract would
+        sshdPublished = (tree.modules.services.modules.openssh { }).pam;
         merged = pamContract.merge {
-          base = baseRules;
-          openssh = sshdRules;
+          base = (tree.modules.core.modules.base { }).pam;
+          openssh = sshdPublished;
         };
-        # Verify sshd is in the merged set
-        sshdService = head (filter (s: s.name == "sshd") merged);
+        sshdMerged = head (filter (s: s.name == "sshd") merged);
       in
       {
-        totalServices = length merged;
-        sshdRuleCount = length sshdService.rules;
-        firstModule = (head sshdService.rules).module;
+        names = map (s: s.name) merged;
+        sshdRulesPreserved = sshdMerged.rules == (head sshdPublished).rules;
       };
     expected = {
-      totalServices = 5;
-      sshdRuleCount = 4;
-      firstModule = "pam_unix";
+      names = [
+        "login"
+        "su"
+        "other"
+        "systemd-user"
+        "sshd"
+      ];
+      sshdRulesPreserved = true;
     };
   };
 }
