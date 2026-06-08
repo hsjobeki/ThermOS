@@ -3,13 +3,13 @@
 let
   thermos = import ../default.nix { };
   pkgs = thermos.pkgs;
-  ev = thermos.evaluated;
+  tree = thermos.tree;
 
-  unitsDrv = (ev.modules.builders.modules.units { }).derivation;
+  unitsDrv = (tree.modules.builders.modules.units { }).derivation;
   rootfsDrv = thermos.rootfs;
-  usersDrv = (ev.modules.builders.modules.users { }).derivation;
-  etcDrv = (ev.modules.builders.modules.etc { }).derivation;
-  types = ev.types;
+  usersDrv = (tree.modules.builders.modules.users { }).derivation;
+  etcDrv = (tree.modules.builders.modules.etc { }).derivation;
+  types = tree.types;
 
   # Stage-2 substrate: drive the kernel-modules builder with a synthetic
   # (system, force) + (system, available) publish, mirroring a real service.

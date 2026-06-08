@@ -6,5 +6,6 @@ pkgs.mkShell {
   packages = [
     pkgs.treefmt
     pkgs.nixfmt
+    pkgs.nix-unit
   ];
 }

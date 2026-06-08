@@ -4,8 +4,8 @@ let
   pkgs = thermos.pkgs;
   thermosLib = import ./lib.nix;
 
-  unitsDrv = (thermos.evaluated.modules.builders.modules.units { }).derivation;
-  usersDrv = (thermos.evaluated.modules.builders.modules.users { }).derivation;
+  unitsDrv = (thermos.tree.modules.builders.modules.units { }).derivation;
+  usersDrv = (thermos.tree.modules.builders.modules.users { }).derivation;
   rootfsDrv = thermos.rootfs;
 
   # PAM test: build a rootfs with a known password

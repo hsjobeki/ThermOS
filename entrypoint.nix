@@ -14,27 +14,28 @@ let
   middlewareModules = adios.adios.lib.importModules ./modules/middleware;
 
   # Makes pkgs and lib available at /nixpkgs
-  nixpkgsModule =
-    { ... }:
-    {
-      name = "nixpkgs";
-      options = {
-        pkgs = {
-          type = adios.adios.types.any;
-          default = pkgs;
-        };
-        lib = {
-          type = adios.adios.types.any;
-          default = lib;
-        };
+  nixpkgsModule = {
+    name = "nixpkgs";
+    options = {
+      pkgs = {
+        type = adios.adios.types.any;
+        default = pkgs;
       };
-      impl = { options, ... }: options;
+      lib = {
+        type = adios.adios.types.any;
+        default = lib;
+      };
     };
+    impl = { options, ... }: options;
+  };
 
-  tree = adios.adios {
+  /**
+    system :: userConfig -> tree
+  */
+  configure = adios.adios {
     name = "thermos";
     modules = {
-      nixpkgs = nixpkgsModule adios.adios;
+      nixpkgs = nixpkgsModule;
       contracts = {
         modules = contractModules;
       };
@@ -53,21 +54,21 @@ let
     };
   };
 
-  evaluated = tree { inherit options; };
+  tree = configure { inherit options; };
 
-  initrdResult = evaluated.modules.builders.modules.initrd { };
+  initrdResult = tree.modules.builders.modules.initrd { };
 in
 {
   inherit
     pkgs
     lib
+    configure
     tree
-    evaluated
     ;
 
-  toplevel = (evaluated.modules.builders.modules.toplevel { }).derivation;
-  rootfs = (evaluated.modules.builders.modules.rootfs { }).derivation;
+  image = (tree.modules.builders.modules.image { }).derivation;
+  toplevel = (tree.modules.builders.modules.toplevel { }).derivation;
+  rootfs = (tree.modules.builders.modules.rootfs { }).derivation;
   kernel = initrdResult.kernel;
   initrd = initrdResult.derivation;
-  image = (evaluated.modules.builders.modules.image { }).derivation;
 }
