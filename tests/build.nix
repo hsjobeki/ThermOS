@@ -9,17 +9,16 @@ let
   rootfsDrv = (tree.modules.builders.modules.rootfs { }).derivation;
   usersDrv = (tree.modules.builders.modules.users { }).derivation;
   etcDrv = (tree.modules.builders.modules.etc { }).derivation;
-  types = tree.types;
+  types = thermos.types;
 
   # Stage-2 substrate: drive the kernel-modules builder with a synthetic
   # (system, force) + (system, available) publish, mirroring a real service.
-  kmImpl = (import ../modules/builders/kernel-modules.nix { inherit types; }).impl;
-  kmResult = kmImpl {
-    inputs.nixpkgs = {
-      inherit pkgs;
-      lib = pkgs.lib;
+  # The records reach the builder through a test publisher in a real tree
+  kmTree = thermos.configure {
+    modules.tests.modules.kmPublisher = import ./fixtures/kernel-modules-publisher.nix {
+      inherit types;
     };
-    subscriptions."kernel-modules" = [
+    options."/tests/kmPublisher".data = [
       {
         name = "loop";
         stage = "system";
@@ -32,6 +31,7 @@ let
       }
     ];
   };
+  kmResult = kmTree.modules.builders.modules."kernel-modules" { };
   kmClosure = kmResult.derivation;
   kmConf = (builtins.head kmResult.etc).text;
   kmPackagesEnv = pkgs.buildEnv {
