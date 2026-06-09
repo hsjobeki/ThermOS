@@ -1,7 +1,7 @@
-{ tree, lib, ... }:
+{ tree, nixpkgs-lib, ... }:
 let
   inherit (builtins) all head match;
-  inherit (lib) isDerivation;
+  inherit (nixpkgs-lib) isDerivation;
 in
 {
   testDhcpNetworkFile = {

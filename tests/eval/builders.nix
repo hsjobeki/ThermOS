@@ -1,34 +1,34 @@
 {
   entrypoint,
   tree,
-  lib,
+  nixpkgs-lib,
   ...
 }:
 {
   # Smoke test that treeery builder produces a derivation
   testEtcProducesDerivation = {
-    expr = lib.isDerivation (tree.modules.builders.modules.etc { }).derivation;
+    expr = nixpkgs-lib.isDerivation (tree.modules.builders.modules.etc { }).derivation;
     expected = true;
   };
 
   testPackagesProducesDerivation = {
-    expr = lib.isDerivation (tree.modules.builders.modules.packages { }).derivation;
+    expr = nixpkgs-lib.isDerivation (tree.modules.builders.modules.packages { }).derivation;
     expected = true;
   };
 
   testUnitsProducesDerivation = {
-    expr = lib.isDerivation (tree.modules.builders.modules.units { }).derivation;
+    expr = nixpkgs-lib.isDerivation (tree.modules.builders.modules.units { }).derivation;
     expected = true;
   };
 
   testTmpfilesProducesDerivation = {
-    expr = lib.isDerivation (tree.modules.builders.modules.tmpfiles { }).derivation;
+    expr = nixpkgs-lib.isDerivation (tree.modules.builders.modules.tmpfiles { }).derivation;
     expected = true;
   };
 
   # toplevel produces a derivation
   testToplevelProducesDerivation = {
-    expr = lib.isDerivation entrypoint.toplevel;
+    expr = nixpkgs-lib.isDerivation entrypoint.toplevel;
     expected = true;
   };
 
@@ -38,7 +38,7 @@
   };
 
   testRootfsProducesDerivation = {
-    expr = lib.isDerivation entrypoint.rootfs;
+    expr = nixpkgs-lib.isDerivation entrypoint.rootfs;
     expected = true;
   };
 
@@ -48,7 +48,7 @@
   };
 
   testUsersProducesDerivation = {
-    expr = lib.isDerivation (tree.modules.builders.modules.users { }).derivation;
+    expr = nixpkgs-lib.isDerivation (tree.modules.builders.modules.users { }).derivation;
     expected = true;
   };
 
