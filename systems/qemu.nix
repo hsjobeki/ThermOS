@@ -1,4 +1,7 @@
-import ../default.nix {
+let
+  thermos = import ../default.nix;
+in
+thermos.configure {
   options = {
     "/core/base" = {
       # Password: thermos
