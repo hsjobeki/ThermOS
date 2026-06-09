@@ -26,27 +26,6 @@
     expected = true;
   };
 
-  # toplevel produces a derivation
-  testToplevelProducesDerivation = {
-    expr = nixpkgs-lib.isDerivation entrypoint.toplevel;
-    expected = true;
-  };
-
-  testToplevelName = {
-    expr = entrypoint.toplevel.name;
-    expected = "thermos-system";
-  };
-
-  testRootfsProducesDerivation = {
-    expr = nixpkgs-lib.isDerivation entrypoint.rootfs;
-    expected = true;
-  };
-
-  testRootfsName = {
-    expr = entrypoint.rootfs.name;
-    expected = "thermos-rootfs";
-  };
-
   testUsersProducesDerivation = {
     expr = nixpkgs-lib.isDerivation (tree.modules.builders.modules.users { }).derivation;
     expected = true;

@@ -6,7 +6,7 @@ let
   tree = thermos.tree;
 
   unitsDrv = (tree.modules.builders.modules.units { }).derivation;
-  rootfsDrv = thermos.rootfs;
+  rootfsDrv = (tree.modules.builders.modules.rootfs { }).derivation;
   usersDrv = (tree.modules.builders.modules.users { }).derivation;
   etcDrv = (tree.modules.builders.modules.etc { }).derivation;
   types = tree.types;

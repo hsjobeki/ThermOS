@@ -6,18 +6,18 @@ let
 
   unitsDrv = (thermos.tree.modules.builders.modules.units { }).derivation;
   usersDrv = (thermos.tree.modules.builders.modules.users { }).derivation;
-  rootfsDrv = thermos.rootfs;
+  rootfsDrv = (thermos.tree.modules.builders.modules.rootfs { }).derivation;
 
   # PAM test: build a rootfs with a known password
   passwordHash = "\$6\$thermostest\$d8h//689.ccFiiNJKscJ9ght7bWyk0WDVBXEHKrMahTIPHLfsMmKeyGgfClxvbpWsBxd/ydyeBzFVWOCLPEiZ1";
-  pamThermos = import ../default.nix {
+  pamThermosTree = thermos.configure {
     options = {
       "/core/base" = {
         rootHashedPassword = passwordHash;
       };
     };
   };
-  pamRootfsDrv = pamThermos.rootfs;
+  pamRootfsDrv = (pamThermosTree.modules.builders.modules.rootfs { }).derivation;
 in
 {
   # systemd-analyze verify with real /run/systemd/
@@ -195,7 +195,7 @@ in
   sshLogin =
     let
       sshKeys = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
-      sshThermos = import ../default.nix {
+      sshThermosTree = thermos.configure {
         options = {
           "/core/initrd-network" = {
             enable = true;
@@ -217,9 +217,10 @@ in
           };
         };
       };
-      kernel = sshThermos.kernel;
-      initrd = sshThermos.initrd;
-      image = sshThermos.image;
+      sshInitrd = sshThermosTree.modules.builders.modules.initrd { };
+      kernel = sshInitrd.kernel;
+      initrd = sshInitrd.derivation;
+      image = (sshThermosTree.modules.builders.modules.image { }).derivation;
     in
     pkgs.testers.runNixOSTest {
       name = "thermos-ssh-login";
