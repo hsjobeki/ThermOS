@@ -3,5 +3,5 @@ let
 in
 {
   inherit entrypoint;
-  inherit (entrypoint) lib tree;
+  inherit (entrypoint) nixpkgs-lib tree;
 }

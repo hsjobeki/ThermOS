@@ -5,7 +5,7 @@
 }:
 let
   pkgs = nixpkgs { inherit system; };
-  lib = pkgs.lib;
+  nixpkgs-lib = pkgs.lib;
 
   contractModules = adios.adios.lib.importModules ./modules/contracts;
   builderModules = adios.adios.lib.importModules ./modules/builders;
@@ -23,52 +23,75 @@ let
       };
       lib = {
         type = adios.adios.types.any;
-        default = lib;
+        default = nixpkgs-lib;
       };
     };
     impl = { options, ... }: options;
   };
 
-  /**
-    system :: userConfig -> tree
-  */
-  configure = adios.adios {
-    name = "thermos";
-    modules = {
-      nixpkgs = nixpkgsModule;
-      contracts = {
-        modules = contractModules;
-      };
-      builders = {
-        modules = builderModules;
-      };
-      core = {
-        modules = coreModules;
-      };
-      services = {
-        modules = serviceModules;
-      };
-      middleware = {
-        modules = middlewareModules;
-      };
+  baseModules = {
+    nixpkgs = nixpkgsModule;
+    contracts = {
+      modules = contractModules;
+    };
+    builders = {
+      modules = builderModules;
+    };
+    core = {
+      modules = coreModules;
+    };
+    services = {
+      modules = serviceModules;
+    };
+    middleware = {
+      modules = middlewareModules;
     };
   };
 
+  /**
+    Produces an adios module tree.
+
+    `modules` are merged into the base set before evaluation, letting callers
+    add modules beyond the shipped set. Tests use it to inject a synthetic
+    publisher and drive subscriber builders through the real contract +
+    subscription path. Child modules live under a group's `modules` attr, so a
+    test publisher goes at `modules.<group>.modules.<name>`.
+
+    Example
+
+    ```nix
+    configure {
+      options."/core/base".rootHashedPassword = "sha...";
+      modules.tests.modules.foo = extraPublisherModule;
+    };
+    ```
+
+    Type
+
+    system :: { options, modules } -> tree
+  */
+  configure =
+    {
+      options ? { },
+      modules ? { },
+    }:
+    (adios.adios {
+      name = "thermos";
+      modules = baseModules // modules;
+    })
+      { inherit options; };
+
   tree = configure { inherit options; };
 
-  initrdResult = tree.modules.builders.modules.initrd { };
 in
 {
   inherit
+    nixpkgs-lib
     pkgs
-    lib
     configure
     tree
     ;
 
-  image = (tree.modules.builders.modules.image { }).derivation;
-  toplevel = (tree.modules.builders.modules.toplevel { }).derivation;
-  rootfs = (tree.modules.builders.modules.rootfs { }).derivation;
-  kernel = initrdResult.kernel;
-  initrd = initrdResult.derivation;
+  # The adios, korora type constructors.
+  types = adios.adios.types;
 }
