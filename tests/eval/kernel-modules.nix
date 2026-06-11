@@ -53,9 +53,8 @@ in
     expected = true;
   };
 
-  # builders/initrd: (initrd, available) is rejected
-  # no udev in the busybox initrd
-  testInitrdAvailableThrows = {
+  # builders/initrd: publish (initrd, available)
+  testInitrdAvailableModuleBuilds = {
     expr =
       let
         t = treeWith [
@@ -66,9 +65,8 @@ in
           }
         ];
       in
-      (t.modules.builders.modules.initrd { }).derivation.drvPath;
-    expectedError.type = "ThrownError";
-    expectedError.msg = ".*initrd, available.*udev.*";
+      isDerivation (t.modules.builders.modules.initrd { }).derivation;
+    expected = true;
   };
 
   # builders/initrd: stage=system modules are excluded

@@ -6,7 +6,7 @@
 #
 # Four quadrants:
 #   (initrd, force)     boot.initrd.kernelModules     -> initrd init modprobe
-#   (initrd, available) boot.initrd.availableKernelModules -> udev in initrd (unsupported here)
+#   (initrd, available) boot.initrd.availableKernelModules -> udev in initrd
 #   (system, force)     boot.kernelModules            -> systemd-modules-load
 #   (system, available) implicit module tree          -> systemd-udevd modalias autoload
 { types, ... }:
