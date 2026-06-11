@@ -19,8 +19,11 @@
       pkgs = inputs.nixpkgs.pkgs;
       rootfs = results.rootfsBuilder.derivation;
       closureInfo = pkgs.closureInfo { rootPaths = [ rootfs ]; };
+      # Fixed so the filesystem identity is deterministic
+      rootUUID = "44444444-4444-4444-8888-888888888888";
     in
     {
+      inherit rootUUID;
       derivation =
         pkgs.runCommand "thermos-image"
           {
@@ -61,7 +64,7 @@
             # faketime pins inode timestamps for reproducibility; fixed UUID
             # eliminates another source of non-determinism.
             faketime -f "1970-01-01 00:00:01" fakeroot mkfs.ext4 \
-              -L thermos -U 44444444-4444-4444-8888-888888888888 \
+              -L thermos -U ${rootUUID} \
               -d ./rootImage $out
 
             resize2fs -M $out

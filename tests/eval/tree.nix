@@ -51,6 +51,7 @@ in
     expected = [
       "base"
       "initrd-network"
+      "initrd-storage"
     ];
   };
 

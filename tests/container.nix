@@ -18,6 +18,44 @@ let
     };
   };
   pamRootfsDrv = (pamThermosTree.modules.builders.modules.rootfs { }).derivation;
+
+  # SSH-over-VDE boot artifacts (kernel + systemd initrd + image) for an
+  # SSH-reachable ThermOS; extraOptions merges in per-test overrides.
+  sshKeys = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
+  sshBaseOptions = {
+    "/core/initrd-network" = {
+      enable = true;
+    };
+    "/services/networkd" = {
+      enable = true;
+      useDHCP = false;
+      addresses = [ "192.168.1.2/24" ];
+    };
+    "/services/openssh" = {
+      permitRootLogin = "prohibit-password";
+      authorizedKeys = {
+        root = [ sshKeys.snakeOilEd25519PublicKey ];
+      };
+    };
+    "/services/getty" = {
+      ttys = [ ];
+      serialTtys = [ ];
+    };
+  };
+  sshArtifacts =
+    extraOptions:
+    let
+      t = thermos.configure { options = sshBaseOptions // extraOptions; };
+      i = t.modules.builders.modules.initrd { };
+      img = t.modules.builders.modules.image { };
+    in
+    {
+      kernel = i.kernel;
+      initrd = i.derivation;
+      image = img.derivation;
+      inherit (img) rootUUID;
+    };
+
 in
 {
   # systemd-analyze verify with real /run/systemd/
@@ -194,33 +232,12 @@ in
 
   sshLogin =
     let
-      sshKeys = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
-      sshThermosTree = thermos.configure {
-        options = {
-          "/core/initrd-network" = {
-            enable = true;
-          };
-          "/services/networkd" = {
-            enable = true;
-            useDHCP = false;
-            addresses = [ "192.168.1.2/24" ];
-          };
-          "/services/openssh" = {
-            permitRootLogin = "prohibit-password";
-            authorizedKeys = {
-              root = [ sshKeys.snakeOilEd25519PublicKey ];
-            };
-          };
-          "/services/getty" = {
-            ttys = [ ];
-            serialTtys = [ ];
-          };
-        };
-      };
-      sshInitrd = sshThermosTree.modules.builders.modules.initrd { };
-      kernel = sshInitrd.kernel;
-      initrd = sshInitrd.derivation;
-      image = (sshThermosTree.modules.builders.modules.image { }).derivation;
+      inherit (sshArtifacts { })
+        kernel
+        initrd
+        image
+        rootUUID
+        ;
     in
     pkgs.testers.runNixOSTest {
       name = "thermos-ssh-login";
@@ -230,6 +247,8 @@ in
         {
           environment.systemPackages = [ pkgs.openssh ];
           virtualisation.vlans = [ 1 ];
+          # Hosts the thermos guest (-m 1024) as a nested QEMU; needs headroom.
+          virtualisation.memorySize = 3072;
         };
 
       testScript = thermosLib.pythonPreamble + ''
@@ -243,11 +262,13 @@ in
 
         start_command = (
             "${pkgs.qemu_kvm}/bin/qemu-system-x86_64"
-            " -m 512 -enable-kvm"
+            " -m 1024 -enable-kvm"
             " -kernel ${kernel}/bzImage"
             " -initrd ${initrd}/initrd"
-            " -append 'root=/dev/vda console=ttyS0 loglevel=4'"
-            " -drive file=${image},if=virtio,format=raw,snapshot=on"
+            # rw: systemd mounts root= read-only by default; ThermOS has no fstab
+            # root entry yet, so the writable rootfs needs it explicitly.
+            " -append 'root=UUID=${rootUUID} rootfstype=ext4 rw console=ttyS0 loglevel=4'"
+            " -drive file=${image},if=none,id=d0,format=raw,snapshot=on -device virtio-blk-pci,drive=d0"
             " -netdev vde,id=vlan1,sock=$QEMU_VDE_SOCKET_1"
             " -device virtio-net-pci,netdev=vlan1,mac=52:54:00:12:01:02"
         )
@@ -265,6 +286,74 @@ in
 
             result = client.succeed(f"ssh {ssh_opts} root@192.168.1.2 whoami")
             assert "root" in result, f"unexpected user: {result}"
+      '';
+    };
+
+  # The same image boots off nvme/ahci/usb/scsi by UUID (udev modalias autoload
+  # via /core/initrd-storage). The cmdline is identical across controllers; no
+  # case names a device node. Sequential boots.
+  storageMatrix =
+    let
+      inherit
+        (sshArtifacts {
+          "/core/initrd-storage" = {
+            enable = true;
+          };
+        })
+        kernel
+        initrd
+        image
+        rootUUID
+        ;
+    in
+    pkgs.testers.runNixOSTest {
+      name = "thermos-storage-matrix";
+
+      nodes.client =
+        { pkgs, ... }:
+        {
+          environment.systemPackages = [ pkgs.openssh ];
+          virtualisation.vlans = [ 1 ];
+          virtualisation.memorySize = 3072;
+        };
+
+      testScript = thermosLib.pythonPreamble + ''
+        start_all()
+        client.wait_for_unit("multi-user.target")
+        client.succeed("mkdir -p /root/.ssh && chmod 700 /root/.ssh")
+        client.succeed("cp ${sshKeys.snakeOilEd25519PrivateKey} /root/.ssh/id_ed25519")
+        client.succeed("chmod 600 /root/.ssh/id_ed25519")
+
+        ssh_opts = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5"
+
+        base = (
+            "${pkgs.qemu_kvm}/bin/qemu-system-x86_64"
+            " -m 1024 -enable-kvm"
+            " -kernel ${kernel}/bzImage"
+            " -initrd ${initrd}/initrd"
+            " -append 'root=UUID=${rootUUID} rootfstype=ext4 rw console=ttyS0 loglevel=4'"
+            " -netdev vde,id=vlan1,sock=$QEMU_VDE_SOCKET_1"
+            " -device virtio-net-pci,netdev=vlan1,mac=52:54:00:12:01:02"
+        )
+
+        img = "${image}"
+        # snapshot=on keeps the store image read-only across cases.
+        controllers = {
+            "nvme": f" -drive file={img},if=none,id=d0,format=raw,snapshot=on -device nvme,drive=d0,serial=thermos",
+            "ahci": f" -drive file={img},if=none,id=d0,format=raw,snapshot=on -device ich9-ahci,id=ahci -device ide-hd,drive=d0,bus=ahci.0",
+            "usb": f" -drive file={img},if=none,id=d0,format=raw,snapshot=on -device qemu-xhci,id=xhci -device usb-storage,drive=d0,bus=xhci.0",
+            "scsi": f" -drive file={img},if=none,id=d0,format=raw,snapshot=on -device virtio-scsi-pci,id=scsi -device scsi-hd,drive=d0,bus=scsi.0",
+        }
+        # Each VM exposes only one controller (no virtio-blk fallback), so booting
+        # to SSH proves discovery happened on that controller.
+        # UUID confirms root is the actual image filesystem
+        # TODO: Make this faster; currently 4 sequential boots.
+        for ctrl, disk in controllers.items():
+            with thermos_vm(ctrl, base + disk):
+                client.wait_until_succeeds(f"ssh {ssh_opts} root@192.168.1.2 true", timeout=180)
+                uuid = client.succeed(f"ssh {ssh_opts} root@192.168.1.2 findmnt -n -o UUID /").strip()
+                assert uuid == "${rootUUID}", f"{ctrl}: root mounted from {uuid!r}, expected ${rootUUID}"
+                print(f"thermos booted via {ctrl}; root UUID={uuid}")
       '';
     };
 }
