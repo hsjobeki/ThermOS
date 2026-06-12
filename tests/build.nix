@@ -10,6 +10,7 @@ let
   usersDrv = (tree.modules.builders.modules.users { }).derivation;
   etcDrv = (tree.modules.builders.modules.etc { }).derivation;
   imageDrv = (tree.modules.builders.modules.image { }).derivation;
+  ukiDrv = (tree.modules.builders.modules.uki { }).derivation;
   types = thermos.types;
 
   # Stage-2 substrate: drive the kernel-modules builder with a synthetic
@@ -347,5 +348,36 @@ in
         echo "image gpt ok"
         mkdir -p $out
         echo "image structure verified" > $out/result
+      '';
+
+  # Unit under test: /builders/uki. Bundles kernel+initrd+cmdline+os-release into
+  # a UKI PE binary via systemd-stub + ukify. Asserts it is an EFI application and
+  # carries the four payload sections (no boot needed; pure binary inspection).
+  ukiStructure =
+    pkgs.runCommand "thermos-test-uki-structure"
+      {
+        nativeBuildInputs = [
+          pkgs.file
+          pkgs.binutils
+        ];
+      }
+      ''
+        uki=${ukiDrv}/thermos.efi
+        test -f "$uki" || { echo "FAIL: thermos.efi missing"; exit 1; }
+
+        file "$uki" | grep -qE 'PE32\+.*(EFI application|executable)' || {
+          echo "FAIL: not a PE32+ EFI application:"; file "$uki"; exit 1; }
+        echo "  efi binary ok"
+
+        # systemd-stub payload sections, by name (objdump column 2).
+        secs=$(objdump -h "$uki" | awk '{print $2}')
+        for s in .linux .initrd .cmdline .osrel; do
+          echo "$secs" | grep -qxF "$s" || { echo "FAIL: missing UKI section $s"; objdump -h "$uki"; exit 1; }
+          echo "  section $s ok"
+        done
+
+        echo "uki ok"
+        mkdir -p $out
+        echo "uki structure verified" > $out/result
       '';
 }
