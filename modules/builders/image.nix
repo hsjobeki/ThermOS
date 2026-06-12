@@ -1,5 +1,31 @@
-# Builds a raw ext4 disk image containing the rootfs and its nix store closure.
-# Uses mkfs.ext4 -d (no root/mount/loop required, runs in nix sandbox).
+/**
+  Builds a GPT disk image with systemd-repart.
+
+  Output is a directory:
+    thermos.raw (see below)
+    repart-output.json
+
+  Layout of thermos.raw:
+
+  +============================================+
+  | p1  ESP   FAT32   ~260 MiB                 |
+  +============================================+
+      type      C12A7328-F81F-11D2-BA4B-00A0C93EC93B  (EFI System)
+      PARTUUID  seed-derived, not asserted
+      contents  TODO: add systemd-boot + UKI
+
+  +============================================+
+  | p2  root  ext4    rest of disk (~492 MiB)  |
+  +============================================+
+      type      4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709  (Linux root x86-64)
+      PARTUUID  44444444-4444-4444-8888-888888888888  (boot target)
+      Label     root
+      contents  rootfs overlay + its /nix/store closure
+
+  Boot: kernel cmdline `root=PARTUUID=44444444-4444-4444-8888-888888888888`.
+        systemd initrd resolves it via udev (/dev/disk/by-partuuid),
+        mounts it as /sysroot, then switch-root into it.
+*/
 { types, ... }:
 {
   name = "image";
@@ -19,58 +45,80 @@
       pkgs = inputs.nixpkgs.pkgs;
       rootfs = results.rootfsBuilder.derivation;
       closureInfo = pkgs.closureInfo { rootPaths = [ rootfs ]; };
-      # Fixed so the filesystem identity is deterministic
-      rootUUID = "44444444-4444-4444-8888-888888888888";
+
+      # Boot by root=PARTUUID=, not fs UUID: repart derives the ext4 fs UUID from
+      # this and it is not settable (repart.d(5)). Doubles as the --seed that
+      # derives every other partition/disk UUID.
+      rootPartUUID = "44444444-4444-4444-8888-888888888888";
+
+      # TODO: add systemd-boot + UKI.
+      # FAT32 needs >= 65525 clusters
+      # ~260M floor at repart 4K cluster size overrides
+      # smaller SizeMaxBytes (repart.d(5)); SizeMinBytes states the floor.
+      espConf = pkgs.writeText "10-esp.conf" ''
+        [Partition]
+        Type=esp
+        Format=vfat
+        SizeMinBytes=256M
+      '';
+      rootConf = pkgs.writeText "20-root.conf" ''
+        [Partition]
+        Type=root
+        Format=ext4
+        Label=root
+        UUID=${rootPartUUID}
+        Minimize=guess
+      '';
     in
     {
-      inherit rootUUID;
+      inherit rootPartUUID;
       derivation =
         pkgs.runCommand "thermos-image"
           {
             nativeBuildInputs = [
-              pkgs.e2fsprogs
+              pkgs.systemd
               pkgs.fakeroot
-              pkgs.libfaketime
+              pkgs.util-linux
+              pkgs.dosfstools
+              pkgs.e2fsprogs
+              pkgs.mtools
             ];
           }
           ''
-            mkdir -p ./rootImage/nix/store
+            export SOURCE_DATE_EPOCH=1
 
-            # Copy store closure first (into writable dir)
+            mkdir -p ./rootImage/nix/store
             while IFS= read -r path; do
               cp -a "$path" ./rootImage/nix/store/
             done < ${closureInfo}/store-paths
 
-            # Overlay rootfs layout (may contain nix/store mount point)
+            # Overlay rootfs over the staged closure (it has an empty /nix/store).
             cp -a ${rootfs}/* ./rootImage/
             chmod -R u+w ./rootImage
 
-            # Size estimate: 20% headroom + 64MB buffer
-            numBlocks=$(du -s -B 4096 --apparent-size ./rootImage | awk '{print int($1 * 1.20) + 16384}')
-            bytes=$((numBlocks * 4096))
+            defs=$PWD/repart.d
+            mkdir -p "$defs"
+            cp ${espConf} "$defs/10-esp.conf"
+            cp ${rootConf} "$defs/20-root.conf"
+            chmod u+w "$defs/20-root.conf"
+            # CopyFiles needs the absolute staging path, known only at build time.
+            echo "CopyFiles=$PWD/rootImage:/" >> "$defs/20-root.conf"
 
-            # Round up to nearest MiB
-            mib=$((1024 * 1024))
-            if (( bytes % mib )); then
-              bytes=$(( (bytes / mib + 1) * mib ))
-            fi
-
-            truncate -s "$bytes" $out
-
-            # fakeroot so mke2fs records uid/gid 0 for every file. The nix build
-            # user is non-root, so cp -a copies the store owned by the build uid.
-            # sshd StrictModes refuses authorized_keys not owned by root or the
-            # target user, which breaks key auth from a baked image.
-            # faketime pins inode timestamps for reproducibility; fixed UUID
-            # eliminates another source of non-determinism.
-            faketime -f "1970-01-01 00:00:01" fakeroot mkfs.ext4 \
-              -L thermos -U ${rootUUID} \
-              -d ./rootImage $out
-
-            resize2fs -M $out
-            new_size=$(dumpe2fs -h $out 2>/dev/null | awk -F: \
-              '/Block count/{count=$2} /Block size/{size=$2} END{print (count*size+16*2^20)/size}')
-            resize2fs $out "$new_size"
+            mkdir -p $out
+            # unshare --map-root-user: the build user cannot set repart user.*
+            # xattrs. fakeroot: files recorded uid/gid 0, else sshd StrictModes
+            # rejects baked authorized_keys. Mirrors nixpkgs repart-image.nix.
+            unshare --map-root-user --fork -- fakeroot \
+              systemd-repart \
+                --architecture=x86-64 \
+                --offline=yes \
+                --empty=create \
+                --size=auto \
+                --seed=${rootPartUUID} \
+                --definitions="$defs" \
+                --dry-run=no \
+                --json=pretty \
+                $out/thermos.raw > $out/repart-output.json
           '';
     };
 }

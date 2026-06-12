@@ -9,6 +9,7 @@ let
   rootfsDrv = (tree.modules.builders.modules.rootfs { }).derivation;
   usersDrv = (tree.modules.builders.modules.users { }).derivation;
   etcDrv = (tree.modules.builders.modules.etc { }).derivation;
+  imageDrv = (tree.modules.builders.modules.image { }).derivation;
   types = thermos.types;
 
   # Stage-2 substrate: drive the kernel-modules builder with a synthetic
@@ -312,4 +313,39 @@ in
     echo "kernel-modules substrate verified" > $out/result
   '';
 
+  # Unit under test: /builders/image GPT layout
+  # produced by systemd-repart
+  # Assertion: partition table shape from the raw image
+  imagePartStructure =
+    pkgs.runCommand "thermos-test-image-structure" { nativeBuildInputs = [ pkgs.util-linux ]; }
+      ''
+        echo "image gpt"
+        img=${imageDrv}/thermos.raw
+        test -f "$img" || { echo "FAIL: thermos.raw missing"; exit 1; }
+        test -f ${imageDrv}/repart-output.json || { echo "FAIL: repart-output.json missing"; exit 1; }
+
+        dump=$(sfdisk -d "$img")
+        echo "$dump"
+
+        echo "$dump" | grep -q '^label: gpt' || { echo "FAIL: not a GPT table"; exit 1; }
+
+        parts=$(echo "$dump" | grep -c 'type=')
+        if [ "$parts" -ne 2 ]; then echo "FAIL: expected 2 partitions, got $parts"; exit 1; fi
+
+        # ESP type GUID: SD_GPT_ESP; UEFI spec. repart resolves Type=esp to this.
+        # See: https://github.com/uapi-group/specifications/blob/main/specs/discoverable_partitions_specification.md
+        echo "$dump" | grep -qi 'type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B' || { echo "FAIL: ESP partition missing"; exit 1; }
+        echo "  esp ok"
+
+        # Root type GUID: SD_GPT_ROOT_X86_64; UAPI Discoverable Partitions Spec
+        # See: https://github.com/uapi-group/specifications/blob/main/specs/discoverable_partitions_specification.md
+        rootline=$(echo "$dump" | grep -i 'type=4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709')
+        test -n "$rootline" || { echo "FAIL: root partition missing"; exit 1; }
+        echo "$rootline" | grep -qi 'uuid=44444444-4444-4444-8888-888888888888' || { echo "FAIL: root PARTUUID mismatch: $rootline"; exit 1; }
+        echo "  root ok"
+
+        echo "image gpt ok"
+        mkdir -p $out
+        echo "image structure verified" > $out/result
+      '';
 }

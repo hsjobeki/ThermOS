@@ -48,6 +48,13 @@ jobs:
             run: nix-build tests/build.nix --no-out-link
     steps:
       - uses: actions/checkout@v4
+      # The image builder runs `unshare --map-root-user` inside the Nix build
+      # sandbox (a nested unprivileged user namespace). ubuntu-latest sets
+      # kernel.apparmor_restrict_unprivileged_userns=1, which makes the nested
+      # userns creation fail with EPERM on /proc/self/uid_map. Relax it so the
+      # systemd-repart image build (tests/build.nix imagePartStructure) works.
+      - name: relax unprivileged userns restriction
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - uses: NixOS/nix-installer-action@6b8548fe06acfb0155a50ab5d561accb215764cc # main
         with:
           extra-conf: |
@@ -71,6 +78,9 @@ jobs:
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      # See the checks job: the image builder needs nested unprivileged userns.
+      - name: relax unprivileged userns restriction
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - uses: NixOS/nix-installer-action@6b8548fe06acfb0155a50ab5d561accb215764cc # main
         with:
           extra-conf: |
