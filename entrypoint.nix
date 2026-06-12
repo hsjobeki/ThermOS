@@ -54,7 +54,7 @@ let
     `modules` are merged into the base set before evaluation, letting callers
     add modules beyond the shipped set. Tests use it to inject a synthetic
     publisher and drive subscriber builders through the real contract +
-    subscription path. Child modules live under a group's `modules` attr, so a
+    subscription path. Child modules live under a group `modules` attr, so a
     test publisher goes at `modules.<group>.modules.<name>`.
 
     Example

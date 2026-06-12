@@ -7,7 +7,7 @@ let
         rootHashedPassword = "$6$thermos$H0ll22GovTVsmgXyGSxBB1rAwU.QF6D/nFspidCXj0vFJ6YzUUzhs1r8/mEiXnb0IUUP8t2tChAmwA.vEXH9G/";
       };
       # Force-load af_packet in the initrd (it persists across switch_root) so the
-      # AF_PACKET socket family is available to systemd-networkd's DHCP client.
+      # AF_PACKET socket family is available to systemd-networkd DHCP client.
       # The kernel ships it as a module (CONFIG_PACKET=m); without this load,
       # socket(AF_PACKET) returns EAFNOSUPPORT and DHCP silently fails. Publishes
       # {af_packet, initrd, force} to /contracts/kernel-modules.

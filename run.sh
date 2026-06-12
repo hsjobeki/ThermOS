@@ -36,7 +36,7 @@ if [[ "$MODE" == "qemu" ]]; then
   trap cleanup EXIT
 
   # Image must be writable (QEMU writes to it)
-  cp "$IMAGE" "$WORKDIR/disk.img"
+  cp "$IMAGE/thermos.raw" "$WORKDIR/disk.img"
   chmod u+w "$WORKDIR/disk.img"
 
   echo ""
@@ -51,7 +51,7 @@ if [[ "$MODE" == "qemu" ]]; then
     -no-reboot \
     -kernel "$KERNEL/bzImage" \
     -initrd "$INITRD/initrd" \
-    -append "root=/dev/vda console=ttyS0 loglevel=4" \
+    -append "root=PARTUUID=44444444-4444-4444-8888-888888888888 rw console=ttyS0 loglevel=4" \
     -drive "file=$WORKDIR/disk.img,if=virtio,format=raw" \
     -netdev user,id=net0,hostfwd=tcp:127.0.0.1:2222-10.0.2.15:22 \
     -device virtio-net-pci,netdev=net0 \

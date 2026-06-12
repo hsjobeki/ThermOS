@@ -53,7 +53,7 @@ let
       kernel = i.kernel;
       initrd = i.derivation;
       image = img.derivation;
-      inherit (img) rootUUID;
+      inherit (img) rootPartUUID;
     };
 
 in
@@ -236,7 +236,7 @@ in
         kernel
         initrd
         image
-        rootUUID
+        rootPartUUID
         ;
     in
     pkgs.testers.runNixOSTest {
@@ -267,8 +267,8 @@ in
             " -initrd ${initrd}/initrd"
             # rw: systemd mounts root= read-only by default; ThermOS has no fstab
             # root entry yet, so the writable rootfs needs it explicitly.
-            " -append 'root=UUID=${rootUUID} rootfstype=ext4 rw console=ttyS0 loglevel=4'"
-            " -drive file=${image},if=none,id=d0,format=raw,snapshot=on -device virtio-blk-pci,drive=d0"
+            " -append 'root=PARTUUID=${rootPartUUID} rootfstype=ext4 rw console=ttyS0 loglevel=4'"
+            " -drive file=${image}/thermos.raw,if=none,id=d0,format=raw,snapshot=on -device virtio-blk-pci,drive=d0"
             " -netdev vde,id=vlan1,sock=$QEMU_VDE_SOCKET_1"
             " -device virtio-net-pci,netdev=vlan1,mac=52:54:00:12:01:02"
         )
@@ -289,9 +289,9 @@ in
       '';
     };
 
-  # The same image boots off nvme/ahci/usb/scsi by UUID (udev modalias autoload
-  # via /core/initrd-storage). The cmdline is identical across controllers; no
-  # case names a device node. Sequential boots.
+  # The same image boots off nvme/ahci/usb/scsi by PARTUUID (udev modalias
+  # autoload via /core/initrd-storage). The cmdline is identical across
+  # controllers; no case names a device node. Sequential boots.
   storageMatrix =
     let
       inherit
@@ -303,7 +303,7 @@ in
         kernel
         initrd
         image
-        rootUUID
+        rootPartUUID
         ;
     in
     pkgs.testers.runNixOSTest {
@@ -331,12 +331,12 @@ in
             " -m 1024 -enable-kvm"
             " -kernel ${kernel}/bzImage"
             " -initrd ${initrd}/initrd"
-            " -append 'root=UUID=${rootUUID} rootfstype=ext4 rw console=ttyS0 loglevel=4'"
+            " -append 'root=PARTUUID=${rootPartUUID} rootfstype=ext4 rw console=ttyS0 loglevel=4'"
             " -netdev vde,id=vlan1,sock=$QEMU_VDE_SOCKET_1"
             " -device virtio-net-pci,netdev=vlan1,mac=52:54:00:12:01:02"
         )
 
-        img = "${image}"
+        img = "${image}/thermos.raw"
         # snapshot=on keeps the store image read-only across cases.
         controllers = {
             "nvme": f" -drive file={img},if=none,id=d0,format=raw,snapshot=on -device nvme,drive=d0,serial=thermos",
@@ -346,14 +346,14 @@ in
         }
         # Each VM exposes only one controller (no virtio-blk fallback), so booting
         # to SSH proves discovery happened on that controller.
-        # UUID confirms root is the actual image filesystem
+        # PARTUUID confirms root is the actual image partition
         # TODO: Make this faster; currently 4 sequential boots.
         for ctrl, disk in controllers.items():
             with thermos_vm(ctrl, base + disk):
                 client.wait_until_succeeds(f"ssh {ssh_opts} root@192.168.1.2 true", timeout=180)
-                uuid = client.succeed(f"ssh {ssh_opts} root@192.168.1.2 findmnt -n -o UUID /").strip()
-                assert uuid == "${rootUUID}", f"{ctrl}: root mounted from {uuid!r}, expected ${rootUUID}"
-                print(f"thermos booted via {ctrl}; root UUID={uuid}")
+                partuuid = client.succeed(f"ssh {ssh_opts} root@192.168.1.2 findmnt -n -o PARTUUID /").strip()
+                assert partuuid == "${rootPartUUID}", f"{ctrl}: root mounted from {partuuid!r}, expected ${rootPartUUID}"
+                print(f"thermos booted via {ctrl}; root PARTUUID={partuuid}")
       '';
     };
 }
