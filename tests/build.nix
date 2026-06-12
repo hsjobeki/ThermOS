@@ -46,6 +46,15 @@ let
     paths = map (p: p.package) kmResult.packages;
   };
   kernelVersion = pkgs.linuxPackages.kernel.modDirVersion;
+
+  # Stage-2 input substrate: drive the real /core/system-input publisher through a
+  # configured tree into the kernel-modules builder.
+  inputTree = thermos.configure {
+    options."/core/system-input".enable = true;
+  };
+  inputKmResult = inputTree.modules.builders.modules."kernel-modules" { };
+  inputKmClosure = inputKmResult.derivation;
+  inputKmConf = (builtins.head inputKmResult.etc).text;
 in
 {
   # Structural INI validation (semantic verify needs /run/systemd/, see container tests)
@@ -454,4 +463,39 @@ in
         mkdir -p $out
         echo "metal image verified" > $out/result
       '';
+
+  # Unit under test: /core/system-input -> /builders/kernel-modules. Asserts the
+  # enabled input modules land in the stage-2 /lib/modules closure and that only
+  # the force-load names (PS/2 + evdev, no reliable modalias) reach modules-load.d;
+  # autoload-only HID names must not.
+  systemInputModules = pkgs.runCommand "thermos-test-system-input" { } ''
+    echo "system-input modules"
+    tree=${inputKmClosure}/lib/modules
+
+    # force-loaded path present (file names: i8042.ko, atkbd.ko, evdev.ko)
+    for m in i8042 atkbd evdev; do
+      find "$tree" -name "$m.ko*" | grep -q . || { echo "FAIL: $m missing from closure"; exit 1; }
+    done
+    echo "  ps2 + evdev present"
+
+    # autoload HID + pointer present (file names are hyphenated)
+    for m in usbhid hid-generic i2c-hid-acpi hid-multitouch psmouse; do
+      find "$tree" -name "$m.ko*" | grep -q . || { echo "FAIL: $m missing from closure"; exit 1; }
+    done
+    echo "  hid + pointer present"
+
+    conf=${pkgs.writeText "system-input-modules-load" inputKmConf}
+    for m in i8042 atkbd evdev; do
+      grep -qx "$m" "$conf" || { echo "FAIL: modules-load.d missing $m"; cat "$conf"; exit 1; }
+    done
+    # available modules autoload via udev; they must not be force-listed
+    for m in usbhid hid_generic i2c_hid_acpi hid-multitouch psmouse; do
+      if grep -qx "$m" "$conf"; then echo "FAIL: $m must not be force-loaded"; cat "$conf"; exit 1; fi
+    done
+    echo "  modules-load.d force-list ok"
+
+    echo "system-input ok"
+    mkdir -p $out
+    echo "system-input verified" > $out/result
+  '';
 }

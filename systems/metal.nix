@@ -14,6 +14,11 @@ let
       "/core/initrd-storage" = {
         enable = true;
       };
+      # Keyboard, pointer, HID for the running system. Without this the stage-2
+      # /lib/modules is empty and the PS/2 keyboard (i8042/atkbd) cannot load.
+      "/core/system-input" = {
+        enable = true;
+      };
       "/services/networkd" = {
         enable = true;
         useDHCP = true;
