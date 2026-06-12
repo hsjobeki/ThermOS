@@ -15,6 +15,7 @@ let
   # Keeps this test independent of the uki builder.
   fakeUki = pkgs.writeText "fake-uki.efi" "MZ\n";
   imageWithEspDrv = (tree.modules.builders.modules.image { espUki = "${fakeUki}"; }).derivation;
+  metal = import ../systems/metal.nix;
   types = thermos.types;
 
   # Stage-2 substrate: drive the kernel-modules builder with a synthetic
@@ -414,5 +415,43 @@ in
         echo "esp populated ok"
         mkdir -p $out
         echo "esp population verified" > $out/result
+      '';
+
+  # Unit under test: systems/metal.nix composition. Proves the metal image's ESP
+  # carries the metal UKI and that UKI's baked cmdline boots root by PARTUUID
+  # Chain: rootPartUUID -> cmdline -> uki -> espUki
+  metalImage =
+    pkgs.runCommand "thermos-test-metal-image"
+      {
+        nativeBuildInputs = [
+          pkgs.util-linux
+          pkgs.mtools
+          pkgs.binutils
+          pkgs.diffutils
+        ];
+      }
+      ''
+        img=${metal.image}/thermos.raw
+        start=$(sfdisk -d "$img" | sed -n 's/.*start=[[:space:]]*\([0-9]*\).*type=C12A7328.*/\1/p')
+        test -n "$start" || { echo "FAIL: no ESP partition found"; sfdisk -d "$img"; exit 1; }
+        offset=$((start * 512))
+
+        mcopy -i "$img@@$offset" ::/EFI/BOOT/BOOTX64.EFI out.efi || {
+          echo "FAIL: could not read EFI/BOOT/BOOTX64.EFI from ESP"; exit 1; }
+
+        # The binary on the ESP is exactly the metal UKI.
+        cmp out.efi ${metal.uki}/thermos.efi || {
+          echo "FAIL: ESP BOOTX64.EFI is not the metal UKI"; exit 1; }
+        echo "  esp carries metal uki"
+
+        # The baked cmdline boots root by the fixed PARTUUID.
+        objcopy -O binary --only-section=.cmdline out.efi cmdline.bin
+        grep -aq 'root=PARTUUID=44444444-4444-4444-8888-888888888888' cmdline.bin || {
+          echo "FAIL: UKI cmdline missing root=PARTUUID="; cat cmdline.bin; echo; exit 1; }
+        echo "  cmdline root=PARTUUID ok"
+
+        echo "metal image ok"
+        mkdir -p $out
+        echo "metal image verified" > $out/result
       '';
 }
