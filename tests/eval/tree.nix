@@ -41,6 +41,7 @@ in
       "rootfs"
       "tmpfiles"
       "toplevel"
+      "uki"
       "units"
       "users"
     ];
