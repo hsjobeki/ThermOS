@@ -53,6 +53,7 @@ in
       "base"
       "initrd-network"
       "initrd-storage"
+      "system-input"
     ];
   };
 

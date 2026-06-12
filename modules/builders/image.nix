@@ -12,7 +12,7 @@
   +============================================+
       type      C12A7328-F81F-11D2-BA4B-00A0C93EC93B  (EFI System)
       PARTUUID  seed-derived, not asserted
-      contents  TODO: add systemd-boot + UKI
+      contents  EFI/BOOT/BOOTX64.EFI when espUki is set (else empty)
 
   +============================================+
   | p2  root  ext4    rest of disk (~492 MiB)  |
@@ -39,10 +39,25 @@
     };
   };
 
+  options = {
+    # Path to a single EFI binary placed at the firmware removable-media fallback
+    # i.e. EFI/BOOT/BOOTX64.EFI on the ESP (Empty leaves the ESP empty)
+    espUki = {
+      type = types.str;
+      default = "";
+    };
+  };
+
   impl =
-    { inputs, results, ... }:
+    {
+      inputs,
+      results,
+      options,
+      ...
+    }:
     let
       pkgs = inputs.nixpkgs.pkgs;
+      lib = inputs.nixpkgs.lib;
       rootfs = results.rootfsBuilder.derivation;
       closureInfo = pkgs.closureInfo { rootPaths = [ rootfs ]; };
 
@@ -51,16 +66,19 @@
       # derives every other partition/disk UUID.
       rootPartUUID = "44444444-4444-4444-8888-888888888888";
 
-      # TODO: add systemd-boot + UKI.
-      # FAT32 needs >= 65525 clusters
-      # ~260M floor at repart 4K cluster size overrides
-      # smaller SizeMaxBytes (repart.d(5)); SizeMinBytes states the floor.
-      espConf = pkgs.writeText "10-esp.conf" ''
-        [Partition]
-        Type=esp
-        Format=vfat
-        SizeMinBytes=256M
-      '';
+      # FAT32 needs >= 65525 clusters, a ~260M floor at repart's 4K cluster size
+      # that overrides a smaller SizeMaxBytes (repart.d(5)); SizeMinBytes states the
+      # floor. espUki is a store path (eval-time known), so its CopyFiles line goes
+      # in the conf directly; repart creates the EFI/BOOT parents.
+      espConf = pkgs.writeText "10-esp.conf" (
+        ''
+          [Partition]
+          Type=esp
+          Format=vfat
+          SizeMinBytes=256M
+        ''
+        + lib.optionalString (options.espUki != "") "CopyFiles=${options.espUki}:/EFI/BOOT/BOOTX64.EFI\n"
+      );
       rootConf = pkgs.writeText "20-root.conf" ''
         [Partition]
         Type=root
