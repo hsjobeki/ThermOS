@@ -88,8 +88,9 @@ kernel does not load yet.
 
 ## Status
 
-Boots to a root shell with systemd, PAM, D-Bus, OpenSSH. Two boot paths:
-nspawn containers and QEMU VMs with direct kernel boot.
+Boots on real HW directly from UEFI
+
+Upcomming: systemd-boot
 
 ### Roadmap
 
@@ -97,7 +98,7 @@ nspawn containers and QEMU VMs with direct kernel boot.
 - [x] Boot in nspawn container (systemd, PAM, SSH, D-Bus)
 - [x] Boot in QEMU with kernel, initrd, and ext4 disk image
 - [x] SSH login verified end-to-end in a VM
-- [ ] Boot on real hardware (UEFI, firmware, microcode, disk encryption)
+- [x] Boot on real hardware (direct UEFI currently)
 - [ ] Live system management: rebuild, switch, rollback
 - [ ] A Wayland desktop on the same verified base
 - [ ] Secret and state provisioning outside the root image
