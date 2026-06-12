@@ -11,6 +11,10 @@ let
   etcDrv = (tree.modules.builders.modules.etc { }).derivation;
   imageDrv = (tree.modules.builders.modules.image { }).derivation;
   ukiDrv = (tree.modules.builders.modules.uki { }).derivation;
+  # Regular-file stand-in for a UKI (vfat rejects symlinks, so it must be real).
+  # Keeps this test independent of the uki builder.
+  fakeUki = pkgs.writeText "fake-uki.efi" "MZ\n";
+  imageWithEspDrv = (tree.modules.builders.modules.image { espUki = "${fakeUki}"; }).derivation;
   types = thermos.types;
 
   # Stage-2 substrate: drive the kernel-modules builder with a synthetic
@@ -379,5 +383,36 @@ in
         echo "uki ok"
         mkdir -p $out
         echo "uki structure verified" > $out/result
+      '';
+
+  # Unit under test: /builders/image espUki option. Asserts a supplied EFI binary
+  # lands at the firmware fallback path EFI/BOOT/BOOTX64.EFI on the ESP, read back
+  # from the vfat partition without a loop mount (mtools at the ESP byte offset).
+  espPopulated =
+    pkgs.runCommand "thermos-test-esp-populated"
+      {
+        nativeBuildInputs = [
+          pkgs.util-linux
+          pkgs.mtools
+        ];
+      }
+      ''
+        img=${imageWithEspDrv}/thermos.raw
+        # ESP start sector from the C12A7328 (ESP) line; sectors are 512 bytes.
+        start=$(sfdisk -d "$img" | sed -n 's/.*start=[[:space:]]*\([0-9]*\).*type=C12A7328.*/\1/p')
+        test -n "$start" || { echo "FAIL: no ESP partition found"; sfdisk -d "$img"; exit 1; }
+        offset=$((start * 512))
+        echo "  esp offset: $offset"
+
+        mdir -i "$img@@$offset" ::/EFI/BOOT | grep -qi 'BOOTX64' || {
+          echo "FAIL: EFI/BOOT/BOOTX64.EFI missing from ESP"
+          mdir -i "$img@@$offset" ::/EFI/BOOT 2>&1 || true
+          exit 1
+        }
+        echo "  bootx64.efi present"
+
+        echo "esp populated ok"
+        mkdir -p $out
+        echo "esp population verified" > $out/result
       '';
 }
