@@ -1,0 +1,20 @@
+// Dock: a bottom layer-shell bar listing running applications. Its only authority
+// is the compositor's foreign-toplevel list; it owns no state, so a restart simply
+// rebuilds the list from the compositor.
+export component App inherits Window {
+    in property <string> apps-text: "(no running apps)";
+
+    width: 1280px;
+    height: 40px;
+    background: #181825;
+
+    Text {
+        x: 10px;
+        y: 0px;
+        height: 100%;
+        text: root.apps-text;
+        color: #cdd6f4;
+        vertical-alignment: center;
+        font-size: 15px;
+    }
+}

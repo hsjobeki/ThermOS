@@ -145,9 +145,12 @@ in
         ];
       };
       expected = {
-        "foo.service" = {
-          Service = {
-            ExecStart = "/bin/foo";
+        "system/foo.service" = {
+          scope = "system";
+          sections = {
+            Service = {
+              ExecStart = "/bin/foo";
+            };
           };
         };
       };
@@ -181,14 +184,17 @@ in
         ];
       };
       expected = {
-        "foo.service" = {
-          Service = {
-            ExecStart = "/bin/foo";
-            Type = "simple";
-            ProtectSystem = "strict";
-          };
-          Unit = {
-            Description = "Foo";
+        "system/foo.service" = {
+          scope = "system";
+          sections = {
+            Service = {
+              ExecStart = "/bin/foo";
+              Type = "simple";
+              ProtectSystem = "strict";
+            };
+            Unit = {
+              Description = "Foo";
+            };
           };
         };
       };
@@ -218,9 +224,12 @@ in
         ];
       };
       expected = {
-        "foo.service" = {
-          Service = {
-            ExecStart = "/bin/new";
+        "system/foo.service" = {
+          scope = "system";
+          sections = {
+            Service = {
+              ExecStart = "/bin/new";
+            };
           };
         };
       };
@@ -250,14 +259,20 @@ in
         ];
       };
       expected = {
-        "a.service" = {
-          Service = {
-            ExecStart = "/a";
+        "system/a.service" = {
+          scope = "system";
+          sections = {
+            Service = {
+              ExecStart = "/a";
+            };
           };
         };
-        "b.service" = {
-          Service = {
-            ExecStart = "/b";
+        "system/b.service" = {
+          scope = "system";
+          sections = {
+            Service = {
+              ExecStart = "/b";
+            };
           };
         };
       };
@@ -266,6 +281,52 @@ in
     testMergeEmpty = {
       expr = unitsContract.merge { };
       expected = { };
+    };
+
+    # The same unit name at two scopes is two distinct units (system bus vs
+    # per-user bus dbus.socket), keyed independently, not a scope conflict.
+    testMergeSameNameDistinctScopes = {
+      expr = unitsContract.merge {
+        a = [
+          {
+            unitName = "dbus.socket";
+            unitConfig = {
+              Socket = {
+                ListenStream = "/run/dbus/system_bus_socket";
+              };
+            };
+          }
+        ];
+        b = [
+          {
+            unitName = "dbus.socket";
+            scope = "user";
+            unitConfig = {
+              Socket = {
+                ListenStream = "%t/bus";
+              };
+            };
+          }
+        ];
+      };
+      expected = {
+        "system/dbus.socket" = {
+          scope = "system";
+          sections = {
+            Socket = {
+              ListenStream = "/run/dbus/system_bus_socket";
+            };
+          };
+        };
+        "user/dbus.socket" = {
+          scope = "user";
+          sections = {
+            Socket = {
+              ListenStream = "%t/bus";
+            };
+          };
+        };
+      };
     };
   };
 

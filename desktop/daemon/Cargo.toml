@@ -1,0 +1,18 @@
+[package]
+name = "thermos-daemon"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "thermos-daemon"
+path = "src/main.rs"
+
+[dependencies]
+# zbus on its default async-io backend (never the tokio feature): the daemon's
+# system-bus connection is self-driving. tokio runs only the daemon's own async
+# main and shutdown wait, exactly as the UI components keep tokio for their own
+# work while zbus drives its own I/O.
+zbus = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
+serde = { workspace = true }

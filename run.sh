@@ -5,6 +5,7 @@
 #   ./run.sh              # build + boot nspawn
 #   ./run.sh --shell      # build + drop into root shell (no systemd)
 #   ./run.sh --qemu       # build + boot QEMU (serial console)
+#   ./run.sh --desktop    # build + boot QEMU desktop (cosmic-comp, GUI window)
 #   ./run.sh /nix/...     # boot a pre-built rootfs path (nspawn)
 #
 # Stop nspawn: type 'poweroff' inside the container,
@@ -19,13 +20,18 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --shell) MODE="shell"; shift ;;
     --qemu) MODE="qemu"; shift ;;
-    -h|--help) echo "Usage: $0 [--shell|--qemu] [rootfs-store-path]"; exit 0 ;;
+    --desktop) MODE="desktop"; shift ;;
+    -h|--help) echo "Usage: $0 [--shell|--qemu|--desktop] [rootfs-store-path]"; exit 0 ;;
     *) ROOTFS="$1"; shift ;;
   esac
 done
 
-if [[ "$MODE" == "qemu" ]]; then
-  SYSTEM="systems/qemu.nix"
+if [[ "$MODE" == "qemu" || "$MODE" == "desktop" ]]; then
+  if [[ "$MODE" == "desktop" ]]; then
+    SYSTEM="systems/desktop.nix"
+  else
+    SYSTEM="systems/qemu.nix"
+  fi
   echo "building kernel + initrd + image"
   KERNEL=$(nix-build "$SYSTEM" -A kernel --no-out-link)
   INITRD=$(nix-build "$SYSTEM" -A initrd --no-out-link)
@@ -39,25 +45,51 @@ if [[ "$MODE" == "qemu" ]]; then
   cp "$IMAGE/thermos.raw" "$WORKDIR/disk.img"
   chmod u+w "$WORKDIR/disk.img"
 
-  echo ""
-  echo "  ThermOS - QEMU boot"
-  echo "  Login:  root / thermos"
-  echo "  SSH:    ssh -p 2222 root@localhost"
-  echo "  Stop:   Ctrl-a x"
-  echo ""
+  APPEND="root=PARTUUID=44444444-4444-4444-8888-888888888888 rw console=ttyS0 loglevel=4"
 
-  qemu-system-x86_64 \
-    -nographic \
-    -no-reboot \
-    -kernel "$KERNEL/bzImage" \
-    -initrd "$INITRD/initrd" \
-    -append "root=PARTUUID=44444444-4444-4444-8888-888888888888 rw console=ttyS0 loglevel=4" \
-    -drive "file=$WORKDIR/disk.img,if=virtio,format=raw" \
-    -netdev user,id=net0,hostfwd=tcp:127.0.0.1:2222-10.0.2.15:22 \
-    -device virtio-net-pci,netdev=net0 \
-    -m 512 \
-    -smp 2 \
-    -enable-kvm
+  if [[ "$MODE" == "desktop" ]]; then
+    echo ""
+    echo "  ThermOS - QEMU desktop boot (needs a host GPU + virgl-capable qemu)"
+    echo "  Desktop: cosmic-comp + bars in the GUI window"
+    echo "  Debug:   serial shell on this terminal"
+    echo "  Stop:    Ctrl-a x"
+    echo ""
+    qemu-system-x86_64 \
+      -no-reboot \
+      -kernel "$KERNEL/bzImage" \
+      -initrd "$INITRD/initrd" \
+      -append "$APPEND" \
+      -drive "file=$WORKDIR/disk.img,if=virtio,format=raw" \
+      -device virtio-vga-gl \
+      -device virtio-keyboard-pci \
+      -device virtio-tablet-pci \
+      -display gtk,gl=on \
+      -serial mon:stdio \
+      -netdev user,id=net0,hostfwd=tcp:127.0.0.1:2222-10.0.2.15:22 \
+      -device virtio-net-pci,netdev=net0 \
+      -m 2048 \
+      -smp 4 \
+      -enable-kvm
+  else
+    echo ""
+    echo "  ThermOS - QEMU boot"
+    echo "  Login:  root / thermos"
+    echo "  SSH:    ssh -p 2222 root@localhost"
+    echo "  Stop:   Ctrl-a x"
+    echo ""
+    qemu-system-x86_64 \
+      -nographic \
+      -no-reboot \
+      -kernel "$KERNEL/bzImage" \
+      -initrd "$INITRD/initrd" \
+      -append "$APPEND" \
+      -drive "file=$WORKDIR/disk.img,if=virtio,format=raw" \
+      -netdev user,id=net0,hostfwd=tcp:127.0.0.1:2222-10.0.2.15:22 \
+      -device virtio-net-pci,netdev=net0 \
+      -m 512 \
+      -smp 2 \
+      -enable-kvm
+  fi
 
   exit 0
 fi

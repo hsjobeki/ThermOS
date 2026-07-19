@@ -51,6 +51,7 @@ in
     expr = attrNames tree.modules.core.modules;
     expected = [
       "base"
+      "graphics"
       "initrd-network"
       "initrd-storage"
       "system-input"
@@ -61,9 +62,12 @@ in
     expr = attrNames tree.modules.services.modules;
     expected = [
       "dbus"
+      "desktop"
       "getty"
       "networkd"
       "openssh"
+      "polkit"
+      "thermos-daemon"
     ];
   };
 

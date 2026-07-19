@@ -1,0 +1,21 @@
+import { Button, VerticalBox } from "std-widgets.slint";
+
+export component App inherits Window {
+    in property <string> update-state: "(connecting)";
+    in property <string> last-action: "";
+    callback request-update();
+
+    title: "ThermOS Settings";
+    preferred-width: 420px;
+    preferred-height: 220px;
+
+    VerticalBox {
+        Text { text: "System update"; font-size: 18px; }
+        Text { text: "State: \{root.update-state}"; font-size: 16px; }
+        Button {
+            text: "Start update";
+            clicked => { root.request-update(); }
+        }
+        Text { text: root.last-action; color: #888888; }
+    }
+}

@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["shell-runtime", "daemon", "apps/settings", "bars/dock", "bars/top"]
+
+[workspace.dependencies]
+slint = { version = "1.17", default-features = false, features = [
+    "compat-1-2",
+    "std",
+    "backend-winit",
+    "renderer-femtovg",
+    "renderer-software",
+] }
+slint-build = "1.17"
+smithay-client-toolkit = { version = "0.20", default-features = false, features = [
+    "calloop",
+] }
+zbus = "5"
+tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
+futures-util = "0.3"
+signal-hook = "0.3"
+serde = { version = "1", features = ["derive"] }

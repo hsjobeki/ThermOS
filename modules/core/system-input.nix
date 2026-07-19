@@ -28,13 +28,15 @@
         "atkbd"
         "evdev"
       ];
-      # udev autoloads by device modalias (USB, I2C-HID, the PS/2 aux serio port).
+      # udev autoloads by device modalias: USB and I2C HID, the PS/2 aux serio
+      # port (psmouse), and the virtio-input devices a VM presents (virtio_input).
       available = [
         "usbhid"
         "hid_generic"
         "i2c_hid_acpi"
         "hid_multitouch"
         "psmouse"
+        "virtio_input"
       ];
     in
     {

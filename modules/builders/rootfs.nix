@@ -52,6 +52,16 @@
           find $out/etc/systemd/system -name '*.wants' -type d -exec chmod u+w {} +
         fi
 
+        # User-scoped units (e.g. the desktop bars) go to the per-user instance
+        # path. Present only when a module publishes at scope = user.
+        if [ -d ${unitsDrv}/etc/systemd/user ]; then
+          mkdir -p $out/etc/systemd/user
+          for f in ${unitsDrv}/etc/systemd/user/*; do
+            cp -rs "$f" $out/etc/systemd/user/
+          done
+          find $out/etc/systemd/user -name '*.wants' -type d -exec chmod u+w {} +
+        fi
+
         # stock default is graphical.target
         ln -s multi-user.target $out/etc/systemd/system/default.target
 
@@ -88,16 +98,28 @@
               ln -s "$sf" $out/usr/lib/systemd/$(basename "$sf")
             done
             ln -s ${pkgs.systemd}/example/systemd/system $out/usr/lib/systemd/system
+            # Per-user instance units. The user manager (user@UID.service) reads
+            # /usr/lib/systemd/user for the stock targets (graphical-session,
+            # sockets, basic, default); our user units (dbus.socket, the bars)
+            # come from /etc/systemd/user via the units builder. Without this the
+            # user session has no targets and the bars never start.
+            ln -s ${pkgs.systemd}/example/systemd/user $out/usr/lib/systemd/user
           else
             ln -s "$f" $out/usr/lib/$name
           fi
         done
         cp --dereference ${etcDrv}/etc/os-release $out/usr/lib/os-release
 
-        # dbus-daemon resolves policy/service dirs relative to /usr/share/dbus-1/.
-        # systemd ships logind/resolved policy files under share/dbus-1/system.d/.
+        # systemd ships its D-Bus policies (login1, systemd1, hostname1, ...) and
+        # service-activation files under share/dbus-1/{system.d,system-services};
+        # packages published by services ship theirs the same way (e.g. polkit's
+        # org.freedesktop.PolicyKit1.conf). We merge all of them, plus the
+        # aggregated packages env, into /usr/share/dbus-1/*. The dbus module adds an
+        # absolute <includedir>/usr/share/dbus-1/system.d</includedir> to system.conf
+        # so they load; without it a daemon (PID1, polkitd, ...) cannot own its bus
+        # name and logind sessions plus every Type=dbus service break.
         mkdir -p $out/usr/share/dbus-1
-        for pkg in ${pkgs.dbus} ${pkgs.systemd}; do
+        for pkg in ${pkgs.dbus} ${pkgs.systemd} ${packagesDrv}; do
           if [ -d $pkg/share/dbus-1 ]; then
             for d in $pkg/share/dbus-1/*; do
               name=$(basename "$d")
@@ -110,6 +132,21 @@
                 ln -sf "$d" $out/usr/share/dbus-1/$name
               fi
             done
+          fi
+        done
+
+        # Per-package share subdirs that a daemon reads from /usr/share by an
+        # absolute, compiled-in path: polkitd reads /usr/share/polkit-1/{actions,
+        # rules.d} (built with datadir /usr/share); cosmic-comp reads
+        # /usr/share/cosmic via cosmic-config (XDG_DATA_DIRS). Each is symlinked
+        # straight from the packages env, which merges share/<sub> from every
+        # package that ships it. Absent when no module publishes that data, so each
+        # is additive. dbus-1 is handled above (merged across dbus + systemd +
+        # packages), not here.
+        for sub in polkit-1 cosmic; do
+          if [ -d ${packagesDrv}/share/$sub ]; then
+            mkdir -p $out/usr/share
+            ln -s ${packagesDrv}/share/$sub $out/usr/share/$sub
           fi
         done
 

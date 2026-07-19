@@ -34,17 +34,22 @@
         name: sections: lib.concatStringsSep "\n\n" (lib.mapAttrsToList sectionToINI sections) + "\n";
 
       emitUnit =
-        name: sections:
+        key: unit:
         let
+          # Contract keys units by "scope/name"; scope drives the dir, name the file.
+          name = lib.last (lib.splitString "/" key);
+          sections = unit.sections;
+          dir = "etc/systemd/${unit.scope}";
           file = pkgs.writeText name (unitToINI name sections);
           wantedBy = (sections.Install or { }).WantedBy or [ ];
           wantedByLinks = lib.concatMapStrings (target: ''
-            mkdir -p $out/etc/systemd/system/${target}.wants
-            ln -s ../${name} $out/etc/systemd/system/${target}.wants/${name}
+            mkdir -p $out/${dir}/${target}.wants
+            ln -s ../${name} $out/${dir}/${target}.wants/${name}
           '') (if builtins.isList wantedBy then wantedBy else [ wantedBy ]);
         in
         ''
-          cp ${file} $out/etc/systemd/system/${name}
+          mkdir -p $out/${dir}
+          cp ${file} $out/${dir}/${name}
           ${wantedByLinks}
         '';
     in

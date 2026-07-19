@@ -59,6 +59,12 @@
           name = "profile";
           text = ''
             export PATH=/bin:/usr/bin
+            if [ -d /etc/profile.d ]; then
+              for f in /etc/profile.d/*.sh; do
+                [ -r "$f" ] && . "$f"
+              done
+              unset f
+            fi
           '';
         }
       ];
@@ -82,6 +88,16 @@
               type = "session";
               control = "required";
               module = "pam_unix";
+            }
+            {
+              type = "session";
+              control = "optional";
+              module = "pam_loginuid";
+            }
+            {
+              type = "session";
+              control = "optional";
+              module = "pam_systemd";
             }
           ];
         }
@@ -152,6 +168,17 @@
               module = "pam_umask";
               args = "silent";
             }
+            {
+              # pam_systemd here is special-cased by systemd to set
+              # XDG_RUNTIME_DIR for the per-user manager (user@UID.service runs
+              # PAMName=systemd-user). Without it `systemd --user` exits "Trying
+              # to run as user instance, but $XDG_RUNTIME_DIR is not set", so the
+              # user bus never starts and graphical-session.target (the desktop
+              # bars) cannot come up.
+              type = "session";
+              control = "optional";
+              module = "pam_systemd";
+            }
           ];
         }
       ];
@@ -170,6 +197,17 @@
         { rule = "d /var/tmp 1777 root root 30d"; }
         { rule = "d /tmp 1777 root root -"; }
         { rule = "d /run 0755 root root -"; }
+        # FHS /var/run -> /run. systemd's stock var.conf creates this, but ThermOS
+        # processes only its own tmpfiles. Clients using the legacy /var/run path
+        # need it: zbus defaults the system bus to /var/run/dbus/system_bus_socket,
+        # so without it the desktop bars cannot reach the bus at /run/dbus.
+        { rule = "L /var/run - - - - ../run"; }
+        # nixpkgs systemd is built with SYSTEMD_BINARY_PATH and default-user-shell
+        # under /run/current-system (a NixOS layout). Without it, `systemctl
+        # daemon-reexec` fails ("Failed to execute our own binary") and PID1 cannot
+        # re-establish itself. Point it at the systemd package so reexec works.
+        { rule = "d /run/current-system 0755 root root -"; }
+        { rule = "L+ /run/current-system/systemd - - - - ${pkgs.systemd}"; }
         # nix store normalizes all files to 0444; fix at boot
         { rule = "z /etc/shadow 0640 root root -"; }
       ];

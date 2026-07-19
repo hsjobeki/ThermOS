@@ -1,0 +1,13 @@
+[package]
+name = "shell-runtime"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+slint = { workspace = true }
+smithay-client-toolkit = { workspace = true }
+zbus = { workspace = true }
+tokio = { workspace = true }
+futures-util = { workspace = true }
+signal-hook = { workspace = true }

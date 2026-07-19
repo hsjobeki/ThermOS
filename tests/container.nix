@@ -19,6 +19,23 @@ let
   };
   pamRootfsDrv = (pamThermosTree.modules.builders.modules.rootfs { }).derivation;
 
+  # Phase 1 desktop acceptance: rootfs with the thermos-daemon + polkit enabled and
+  # a known root password (to log in over the console and exercise the daemon).
+  desktopTree = thermos.configure {
+    options = {
+      "/core/base" = {
+        rootHashedPassword = passwordHash;
+      };
+      "/services/polkit" = {
+        enable = true;
+      };
+      "/services/thermos-daemon" = {
+        enable = true;
+      };
+    };
+  };
+  desktopRootfsDrv = (desktopTree.modules.builders.modules.rootfs { }).derivation;
+
   # SSH-over-VDE boot artifacts (kernel + systemd initrd + image) for an
   # SSH-reachable ThermOS; extraOptions merges in per-test overrides.
   sshKeys = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
@@ -227,6 +244,74 @@ in
 
       result = host.succeed("expect /tmp/login.exp")
       assert "PAM auth ok" in result, f"Auth failed:\n{result}"
+    '';
+  };
+
+  # Phase 1 acceptance: the thermos-daemon runs as its own system unit and user,
+  # serves UpdateState over D-Bus, and its privileged StartUpdate is authorized
+  # through polkit and invoked. Boots the rootfs under nspawn, logs in over the
+  # console (PAM), and exercises the daemon exactly as a privileged client would.
+  desktopDaemon = pkgs.testers.runNixOSTest {
+    name = "thermos-desktop-daemon";
+
+    nodes.host =
+      { pkgs, ... }:
+      {
+        environment.systemPackages = [
+          pkgs.systemd
+          pkgs.expect
+        ];
+        virtualisation.memorySize = 1024;
+        virtualisation.diskSize = 4096;
+      };
+
+    testScript = ''
+      host.start()
+      host.wait_for_unit("multi-user.target")
+
+      host.succeed("cp -a ${desktopRootfsDrv} /rootfs && chmod -R u+w /rootfs")
+
+      host.succeed("""cat > /tmp/daemon.exp << 'EXPECT'
+      set timeout 240
+      spawn systemd-nspawn --boot -D /rootfs --bind-ro=/nix/store --register=no
+      expect { "login:" {} timeout { puts "FAIL: no login prompt"; exit 1 } }
+      send "root\r"
+      expect { "Password:" {} timeout { puts "FAIL: no password prompt"; exit 1 } }
+      send "thermostest\r"
+      expect { -re {#\s*$} {} timeout { puts "FAIL: no shell prompt after auth"; exit 1 } }
+
+      # Wait for the daemon to own its bus name (Type=dbus).
+      send "for i in \$(seq 1 30); do systemctl is-active thermos-daemon.service >/dev/null 2>&1 && break; sleep 1; done; echo WAIT_DONE\r"
+      expect { "WAIT_DONE" {} timeout { puts "FAIL: daemon wait loop"; exit 1 } }
+
+      send "systemctl is-active polkit.service; echo POLKIT_RC\$?\r"
+      expect { "POLKIT_RC0" {} timeout { puts "FAIL: polkit.service not active"; exit 1 } }
+
+      send "systemctl is-active thermos-daemon.service; echo DAEMON_RC\$?\r"
+      expect { "DAEMON_RC0" {} timeout { puts "FAIL: thermos-daemon.service not active"; exit 1 } }
+
+      send "stat -c %U /proc/\$(systemctl show thermos-daemon.service -p MainPID --value)\r"
+      expect { "thermos-daemon" {} timeout { puts "FAIL: daemon not running as thermos-daemon"; exit 1 } }
+
+      send "busctl get-property org.thermos.Daemon1 /org/thermos/Daemon1 org.thermos.Daemon1 UpdateState\r"
+      expect { "idle" {} timeout { puts "FAIL: UpdateState not idle"; exit 1 } }
+
+      send "busctl call org.thermos.Daemon1 /org/thermos/Daemon1 org.thermos.Daemon1 StartUpdate; echo CALL_RC\$?\r"
+      expect { "CALL_RC0" {} timeout { puts "FAIL: StartUpdate not authorized/invoked"; exit 1 } }
+
+      send "journalctl -u thermos-daemon --no-pager\r"
+      expect { "StartUpdate authorized for" {} timeout { puts "FAIL: no authorization log line"; exit 1 } }
+
+      send "echo DESKTOP_DAEMON_OK\r"
+      expect { "DESKTOP_DAEMON_OK" { puts "desktop daemon ok" } timeout { puts "FAIL: final marker"; exit 1 } }
+
+      send "poweroff -f\r"
+      expect eof
+      EXPECT
+      """)
+
+      result = host.succeed("expect /tmp/daemon.exp")
+      assert "desktop daemon ok" in result, f"Daemon acceptance failed:\n{result}"
     '';
   };
 

@@ -44,6 +44,20 @@ in
     expected = true;
   };
 
+  # user@UID.service runs PAMName=systemd-user; pam_systemd in that stack is the
+  # mechanism systemd special-cases to set XDG_RUNTIME_DIR for the per-user
+  # manager. Without it `systemd --user` exits "$XDG_RUNTIME_DIR is not set" and
+  # the user bus plus graphical-session.target (desktop bars) never start.
+  testSystemdUserHasPamSystemd = {
+    expr =
+      let
+        impl = tree.modules.middleware.modules.pam { };
+        entry = head (filter (e: e.name == "pam.d/systemd-user") impl.etc);
+      in
+      match ".*pam_systemd\\.so.*" entry.text != null;
+    expected = true;
+  };
+
   testMiddlewareRendersFiveServices = {
     expr =
       let

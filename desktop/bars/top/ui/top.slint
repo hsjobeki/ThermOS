@@ -1,0 +1,57 @@
+// Top bar: system status and actions. The clock is a local timer; the update
+// status comes from the thermos daemon; the shutdown action calls logind. Each
+// fact has its own authority and its own source; none is shared with the dock.
+export component App inherits Window {
+    in property <string> clock-text: "--:--:--";
+    in property <string> update-text: "update: (connecting)";
+    callback request-shutdown();
+
+    // No hardcoded width: the layer Platform's set_size drives root.width to the
+    // surface (output) width, so the right-anchored clock and shutdown button
+    // position correctly. A fixed width clips them on any narrower surface.
+    height: 32px;
+    background: #11111b;
+
+    Text {
+        x: 12px;
+        y: 0px;
+        height: 100%;
+        text: root.update-text;
+        color: #cdd6f4;
+        vertical-alignment: center;
+        font-size: 14px;
+    }
+
+    Text {
+        x: root.width - 230px;
+        y: 0px;
+        width: 130px;
+        height: 100%;
+        text: root.clock-text;
+        color: #cdd6f4;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        font-size: 14px;
+    }
+
+    Rectangle {
+        x: root.width - 92px;
+        y: 4px;
+        width: 80px;
+        height: 24px;
+        border-radius: 4px;
+        background: ta.has-hover ? #585b70 : #45475a;
+
+        Text {
+            text: "Shutdown";
+            color: white;
+            font-size: 12px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        ta := TouchArea {
+            clicked => { root.request-shutdown(); }
+        }
+    }
+}

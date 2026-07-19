@@ -6,6 +6,10 @@ in
   tree = import ./tree.nix s;
   builders = import ./builders.nix s;
   dbus = import ./dbus.nix s;
+  graphics = import ./graphics.nix s;
+  base = import ./base.nix s;
+  thermosDaemon = import ./thermos-daemon.nix s;
+  desktop = import ./desktop.nix s;
   networkd = import ./networkd.nix s;
   kernelModules = import ./kernel-modules.nix s;
   services = import ./services.nix s;

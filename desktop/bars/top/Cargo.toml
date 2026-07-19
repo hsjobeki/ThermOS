@@ -1,0 +1,19 @@
+[package]
+name = "top"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "top"
+path = "src/main.rs"
+
+[dependencies]
+shell-runtime = { path = "../../shell-runtime" }
+slint = { workspace = true }
+zbus = { workspace = true }
+tokio = { workspace = true }
+futures-util = { workspace = true }
+
+[build-dependencies]
+slint-build = { workspace = true }

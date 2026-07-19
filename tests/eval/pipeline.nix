@@ -17,7 +17,7 @@ in
         gettyUnits = (tree.modules.services.modules.getty { }).units;
         merged = unitsContract.merge { getty = gettyUnits; };
       in
-      hasAttr "getty@tty1.service" merged;
+      hasAttr "system/getty@tty1.service" merged;
     expected = true;
   };
 
@@ -27,7 +27,7 @@ in
         gettyUnits = (tree.modules.services.modules.getty { }).units;
         merged = unitsContract.merge { getty = gettyUnits; };
       in
-      hasAttr "Service" merged."getty@tty1.service";
+      hasAttr "Service" merged."system/getty@tty1.service".sections;
     expected = true;
   };
 }

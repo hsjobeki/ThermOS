@@ -1,0 +1,16 @@
+[package]
+name = "dock"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "dock"
+path = "src/main.rs"
+
+[dependencies]
+shell-runtime = { path = "../../shell-runtime" }
+slint = { workspace = true }
+
+[build-dependencies]
+slint-build = { workspace = true }

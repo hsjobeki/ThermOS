@@ -55,6 +55,18 @@ let
   inputKmResult = inputTree.modules.builders.modules."kernel-modules" { };
   inputKmClosure = inputKmResult.derivation;
   inputKmConf = (builtins.head inputKmResult.etc).text;
+  # Desktop bars: drive /services/desktop enabled through a configured tree into
+  # the units builder, which must route scope = user to the per-user instance.
+  desktopTree = thermos.configure {
+    options."/services/desktop".enable = true;
+  };
+  desktopUnitsDrv = (desktopTree.modules.builders.modules.units { }).derivation;
+  desktopEtcDrv = (desktopTree.modules.builders.modules.etc { }).derivation;
+  desktopImpl = desktopTree.modules.services.modules.desktop { enable = true; };
+  desktopSessionScript =
+    (builtins.head (builtins.filter (p: p.package.name == "thermos-session") desktopImpl.packages))
+    .package;
+
 in
 {
   # Structural INI validation (semantic verify needs /run/systemd/, see container tests)
@@ -143,6 +155,28 @@ in
     # dbus config
     test -e ${rootfsDrv}/etc/dbus-1/system.conf || { echo "FAIL: /etc/dbus-1/system.conf missing"; exit 1; }
     test -d ${rootfsDrv}/usr/share/dbus-1 || test -L ${rootfsDrv}/usr/share/dbus-1 || { echo "FAIL: /usr/share/dbus-1 missing"; exit 1; }
+
+    # systemd's bus policies must be on dbus-daemon's policy search path: the
+    # policy file must exist under /usr/share/dbus-1/system.d AND system.conf
+    # must carry an absolute include for that dir (the stock relative
+    # <includedir>system.d</includedir> resolves to /etc, not /usr/share).
+    # Without both, root has no <allow own="org.freedesktop.systemd1"/>, PID1
+    # cannot own the name, and logind user-sessions plus every Type=dbus service
+    # break (the desktop black-screens: cosmic-comp can't bind its socket with no
+    # logind session). Guards both halves of the fix at the rootfs level.
+    test -e ${rootfsDrv}/usr/share/dbus-1/system.d/org.freedesktop.systemd1.conf || { echo "FAIL: systemd1 dbus policy missing from /usr/share/dbus-1/system.d"; exit 1; }
+    grep -qF '<includedir>/usr/share/dbus-1/system.d</includedir>' ${rootfsDrv}/etc/dbus-1/system.conf || { echo "FAIL: system.conf does not scan /usr/share/dbus-1/system.d"; cat ${rootfsDrv}/etc/dbus-1/system.conf; exit 1; }
+
+    # Per-user session bus. The user manager needs the stock targets at
+    # /usr/lib/systemd/user, plus the user dbus.socket (enabled via
+    # sockets.target.wants) and session.conf, to create /run/user/UID/bus.
+    # Without these `systemctl --user` fails and the desktop bars never start.
+    test -d ${rootfsDrv}/usr/lib/systemd/user || test -L ${rootfsDrv}/usr/lib/systemd/user || { echo "FAIL: /usr/lib/systemd/user missing"; exit 1; }
+    test -e ${rootfsDrv}/usr/lib/systemd/user/sockets.target || { echo "FAIL: stock user targets missing from /usr/lib/systemd/user"; exit 1; }
+    test -e ${rootfsDrv}/etc/systemd/user/dbus.socket || { echo "FAIL: user dbus.socket missing"; exit 1; }
+    test -e ${rootfsDrv}/etc/systemd/user/sockets.target.wants/dbus.socket || { echo "FAIL: user dbus.socket not enabled"; exit 1; }
+    test -e ${rootfsDrv}/etc/dbus-1/session.conf || { echo "FAIL: /etc/dbus-1/session.conf missing"; exit 1; }
+    echo "  user session bus ok"
 
     for dir in proc sys dev run tmp; do
       test -d ${rootfsDrv}/$dir || { echo "FAIL: /$dir missing"; exit 1; }
@@ -478,8 +512,8 @@ in
     done
     echo "  ps2 + evdev present"
 
-    # autoload HID + pointer present (file names are hyphenated)
-    for m in usbhid hid-generic i2c-hid-acpi hid-multitouch psmouse; do
+    # autoload HID + pointer + virtio input present (.ko names vary: hyphen or underscore)
+    for m in usbhid hid-generic i2c-hid-acpi hid-multitouch psmouse virtio_input; do
       find "$tree" -name "$m.ko*" | grep -q . || { echo "FAIL: $m missing from closure"; exit 1; }
     done
     echo "  hid + pointer present"
@@ -489,7 +523,7 @@ in
       grep -qx "$m" "$conf" || { echo "FAIL: modules-load.d missing $m"; cat "$conf"; exit 1; }
     done
     # available modules autoload via udev; they must not be force-listed
-    for m in usbhid hid_generic i2c_hid_acpi hid-multitouch psmouse; do
+    for m in usbhid hid_generic i2c_hid_acpi hid-multitouch psmouse virtio_input; do
       if grep -qx "$m" "$conf"; then echo "FAIL: $m must not be force-loaded"; cat "$conf"; exit 1; fi
     done
     echo "  modules-load.d force-list ok"
@@ -497,5 +531,50 @@ in
     echo "system-input ok"
     mkdir -p $out
     echo "system-input verified" > $out/result
+  '';
+
+  desktopUserUnits = pkgs.runCommand "thermos-test-desktop-user-units" { } ''
+    echo "desktop user units"
+    base=${desktopUnitsDrv}/etc/systemd/user
+    for u in thermos-dock.service thermos-top.service; do
+      test -f "$base/$u" || { echo "FAIL: $u missing from /etc/systemd/user"; exit 1; }
+      grep -qx 'Restart=on-failure' "$base/$u" || { echo "FAIL: $u not Restart=on-failure"; cat "$base/$u"; exit 1; }
+      grep -qx 'PartOf=graphical-session.target' "$base/$u" || { echo "FAIL: $u not PartOf graphical-session"; exit 1; }
+    done
+    want=$base/graphical-session.target.wants
+    test -L "$want/thermos-dock.service" || { echo "FAIL: dock not enabled via .wants symlink"; ls -la "$want" 2>&1; exit 1; }
+    test -L "$want/thermos-top.service" || { echo "FAIL: top not enabled via .wants symlink"; exit 1; }
+    # The session target binds graphical-session.target (RefuseManualStart) up so
+    # thermos-session can start the session; the bars (WantedBy) then follow.
+    test -f "$base/thermos-session.target" || { echo "FAIL: thermos-session.target missing"; exit 1; }
+    grep -qx 'BindsTo=graphical-session.target' "$base/thermos-session.target" || { echo "FAIL: thermos-session.target does not bind graphical-session.target"; cat "$base/thermos-session.target"; exit 1; }
+    # Scope isolation: user bars must not leak into the system instance.
+    if [ -e ${desktopUnitsDrv}/etc/systemd/system/thermos-dock.service ]; then
+      echo "FAIL: user bar leaked into /etc/systemd/system"; exit 1
+    fi
+    echo "desktop user units ok"
+    mkdir -p $out
+    echo "verified" > $out/result
+  '';
+
+  desktopSessionWiring = pkgs.runCommand "thermos-test-desktop-session-wiring" { } ''
+    echo "desktop session wiring"
+    hook=${desktopEtcDrv}/etc/profile.d/thermos-session.sh
+    test -f "$hook" || { echo "FAIL: profile.d/thermos-session.sh missing"; exit 1; }
+    grep -q 'exec thermos-session' "$hook" || { echo "FAIL: hook does not exec thermos-session"; cat "$hook"; exit 1; }
+    grep -q '/dev/tty1' "$hook" || { echo "FAIL: hook not guarded on tty1"; cat "$hook"; exit 1; }
+    # Start side of the session-target wiring: the launcher must start
+    # thermos-session.target, not graphical-session.target (which refuses manual
+    # start). Couples the script to the unit desktopUserUnits checks.
+    script=${desktopSessionScript}/bin/thermos-session
+    grep -q 'systemctl --user start thermos-session.target' "$script" || { echo "FAIL: launcher does not start thermos-session.target"; cat "$script"; exit 1; }
+    # pam_systemd must be in the login session stack or the user manager never
+    # starts and systemctl --user (used by thermos-session) cannot work.
+    login=${desktopEtcDrv}/etc/pam.d/login
+    test -f "$login" || { echo "FAIL: pam.d/login missing"; exit 1; }
+    grep -q 'pam_systemd' "$login" || { echo "FAIL: login PAM lacks pam_systemd"; cat "$login"; exit 1; }
+    echo "desktop session wiring ok"
+    mkdir -p $out
+    echo "verified" > $out/result
   '';
 }
