@@ -35,6 +35,7 @@
         "i2c_hid_acpi"
         "hid_multitouch"
         "psmouse"
+        "virtio_input"
       ];
     in
     {
