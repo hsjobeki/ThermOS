@@ -1,29 +1,28 @@
 let
   thermos = import ../default.nix { };
   system = thermos.configure {
+    modules = [
+      # Panel getty + autologin
+      "/services/getty"
+      "/services/dbus"
+      "/services/openssh"
+      "/services/networkd"
+      "/hardware/initrd-network"
+      # Broad storage controllers (usb-storage, uas, xhci, ahci, nvme, sd_mod) so
+      # the initrd can find the root partition on a USB stick or an internal disk.
+      "/hardware/initrd-storage"
+      # Keyboard, pointer, HID for the running system. Without this the stage-2
+      # /lib/modules is empty and the PS/2 keyboard (i8042/atkbd) cannot load.
+      "/hardware/system-input"
+    ];
     options = {
       "/core/base" = {
         # Password: thermos. Console login fallback when there is no network yet.
         rootHashedPassword = "$6$thermos$H0ll22GovTVsmgXyGSxBB1rAwU.QF6D/nFspidCXj0vFJ6YzUUzhs1r8/mEiXnb0IUUP8t2tChAmwA.vEXH9G/";
       };
-      "/core/initrd-network" = {
-        enable = true;
-      };
-      # Enable broad storage controllers (usb-storage, uas, xhci, ahci, nvme, sd_mod) so
-      # the initrd can find the root partition on a USB stick or an internal disk.
-      "/core/initrd-storage" = {
-        enable = true;
-      };
-      # Keyboard, pointer, HID for the running system. Without this the stage-2
-      # /lib/modules is empty and the PS/2 keyboard (i8042/atkbd) cannot load.
-      "/core/system-input" = {
-        enable = true;
-      };
       "/services/networkd" = {
-        enable = true;
         useDHCP = true;
       };
-      # Panel getty + autologin
       "/services/getty" = {
         ttys = [ "tty1" ];
         serialTtys = [ ];

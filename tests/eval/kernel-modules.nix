@@ -13,14 +13,19 @@ let
   treeWith =
     data:
     entrypoint.configure {
-      modules.tests.modules.kmPublisher = kmPublisher;
+      extraModules.tests.modules.kmPublisher = kmPublisher;
       options."/tests/kmPublisher".data = data;
     };
+
+  # Tree with the initrd-network hardware module dropped in
+  initrdNetworkTree = entrypoint.configure {
+    modules = [ "/hardware/initrd-network" ];
+  };
 in
 {
-  # core/initrd-network impl: enabled publishes af_packet at (initrd, force)
-  testInitrdNetworkEnabled = {
-    expr = (tree.modules.core.modules."initrd-network" { enable = true; })."kernel-modules";
+  # hardware/initrd-network impl: selected publishes af_packet at (initrd, force)
+  testInitrdNetworkPublishesAfPacket = {
+    expr = (initrdNetworkTree.modules.hardware.modules."initrd-network" { })."kernel-modules";
     expected = [
       {
         name = "af_packet";
@@ -30,26 +35,10 @@ in
     ];
   };
 
-  # core/initrd-network: disabled publishes nothing
-  testInitrdNetworkDisabled = {
-    expr = (tree.modules.core.modules."initrd-network" { })."kernel-modules";
-    expected = [ ];
-  };
-
   # builders/initrd: a published (initrd, force) module (initrd-network af_packet)
   # flows through the contract into the initrd closure.
   testInitrdForceModuleBuilds = {
-    expr =
-      let
-        reconfigured = tree.override {
-          options = {
-            "/core/initrd-network" = {
-              enable = true;
-            };
-          };
-        };
-      in
-      isDerivation (reconfigured.modules.builders.modules.initrd { }).derivation;
+    expr = isDerivation (initrdNetworkTree.modules.builders.modules.initrd { }).derivation;
     expected = true;
   };
 

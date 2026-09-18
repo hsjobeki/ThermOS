@@ -1,6 +1,11 @@
 let
   thermos = import ../default.nix { };
   system = thermos.configure {
+    modules = [
+      "/services/getty"
+      "/services/dbus"
+      "/services/openssh"
+    ];
     options = {
       "/core/base" = {
         # Password: thermos

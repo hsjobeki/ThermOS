@@ -109,16 +109,20 @@ Upcomming: systemd-boot
 ## Layout
 
 ```
-entrypoint.nix          wires module groups into the adios tree
+entrypoint.nix          wires module groups into the adios tree;
+                        configure { modules } selects catalog modules by path
 systems/
   test.nix              nspawn configuration (SSH key, root password)
-  qemu.nix              QEMU configuration (serial console, no VTs)
+  qemu.nix              QEMU configuration (serial console, DHCP, af_packet)
+  metal.nix             flashable UKI image (storage breadth, input drivers)
 modules/
   contracts/            typed data schemas (etc, units, users, ...)
   builders/             derivation producers (rootfs, initrd, image, etc, units, users)
-  core/                 base system (root user, FHS, default target)
+  core/                 always in the tree (root user, FHS, default target)
+  hardware/             selectable hardware support (initrd-network, initrd-storage,
+                        system-input)
   middleware/           data transformers (PAM store path resolution)
-  services/             service modules (getty, dbus, openssh)
+  services/             selectable services (getty, dbus, openssh, networkd)
 ```
 
 ## Tests

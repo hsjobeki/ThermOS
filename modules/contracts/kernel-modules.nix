@@ -38,7 +38,7 @@
         /*
           Example 'publishers'
           {
-           "/core/initrd-network" = [ { name = "af_packet"; stage = "initrd"; mode = "force"; } ];
+           "/hardware/initrd-network" = [ { name = "af_packet"; stage = "initrd"; mode = "force"; } ];
            "/services/foo"        = [ { name = "loop"; stage = "system"; mode = "force"; } ];
           }
 

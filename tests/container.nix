@@ -4,13 +4,27 @@ let
   pkgs = thermos.pkgs;
   thermosLib = import ./lib.nix;
 
-  unitsDrv = (thermos.tree.modules.builders.modules.units { }).derivation;
-  usersDrv = (thermos.tree.modules.builders.modules.users { }).derivation;
-  rootfsDrv = (thermos.tree.modules.builders.modules.rootfs { }).derivation;
+  # Baseline system for the artifact tests: the interactive service set.
+  tree = thermos.configure {
+    modules = [
+      "/services/getty"
+      "/services/dbus"
+      "/services/openssh"
+    ];
+  };
+
+  unitsDrv = (tree.modules.builders.modules.units { }).derivation;
+  usersDrv = (tree.modules.builders.modules.users { }).derivation;
+  rootfsDrv = (tree.modules.builders.modules.rootfs { }).derivation;
 
   # PAM test: build a rootfs with a known password
   passwordHash = "\$6\$thermostest\$d8h//689.ccFiiNJKscJ9ght7bWyk0WDVBXEHKrMahTIPHLfsMmKeyGgfClxvbpWsBxd/ydyeBzFVWOCLPEiZ1";
   pamThermosTree = thermos.configure {
+    modules = [
+      "/services/getty"
+      "/services/dbus"
+      "/services/openssh"
+    ];
     options = {
       "/core/base" = {
         rootHashedPassword = passwordHash;
@@ -20,14 +34,17 @@ let
   pamRootfsDrv = (pamThermosTree.modules.builders.modules.rootfs { }).derivation;
 
   # SSH-over-VDE boot artifacts (kernel + systemd initrd + image) for an
-  # SSH-reachable ThermOS; extraOptions merges in per-test overrides.
+  # SSH-reachable ThermOS; extraModules merges in per-test hardware.
   sshKeys = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
+  sshModules = [
+    "/services/getty"
+    "/services/dbus"
+    "/services/openssh"
+    "/services/networkd"
+    "/hardware/initrd-network"
+  ];
   sshBaseOptions = {
-    "/core/initrd-network" = {
-      enable = true;
-    };
     "/services/networkd" = {
-      enable = true;
       useDHCP = false;
       addresses = [ "192.168.1.2/24" ];
     };
@@ -43,9 +60,12 @@ let
     };
   };
   sshArtifacts =
-    extraOptions:
+    extraModules:
     let
-      t = thermos.configure { options = sshBaseOptions // extraOptions; };
+      t = thermos.configure {
+        modules = sshModules ++ extraModules;
+        options = sshBaseOptions;
+      };
       i = t.modules.builders.modules.initrd { };
       img = t.modules.builders.modules.image { };
     in
@@ -232,7 +252,7 @@ in
 
   sshLogin =
     let
-      inherit (sshArtifacts { })
+      inherit (sshArtifacts [ ])
         kernel
         initrd
         image
@@ -290,16 +310,11 @@ in
     };
 
   # The same image boots off nvme/ahci/usb/scsi by PARTUUID (udev modalias
-  # autoload via /core/initrd-storage). The cmdline is identical across
+  # autoload via /hardware/initrd-storage). The cmdline is identical across
   # controllers; no case names a device node. Sequential boots.
   storageMatrix =
     let
-      inherit
-        (sshArtifacts {
-          "/core/initrd-storage" = {
-            enable = true;
-          };
-        })
+      inherit (sshArtifacts [ "/hardware/initrd-storage" ])
         kernel
         initrd
         image

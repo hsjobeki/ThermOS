@@ -1,7 +1,6 @@
 { nixpkgs, adios }:
 {
   system ? builtins.currentSystem,
-  options ? { },
 }:
 let
   pkgs = nixpkgs { inherit system; };
@@ -10,8 +9,45 @@ let
   contractModules = adios.adios.lib.importModules ./modules/contracts;
   builderModules = adios.adios.lib.importModules ./modules/builders;
   coreModules = adios.adios.lib.importModules ./modules/core;
-  serviceModules = adios.adios.lib.importModules ./modules/services;
   middlewareModules = adios.adios.lib.importModules ./modules/middleware;
+
+  # Selectable modules. Presence in the tree is enablement: a selected module
+  # publishes, an unselected module does not exist. There is no enable option.
+  catalog = {
+    services = adios.adios.lib.importModules ./modules/services;
+    hardware = adios.adios.lib.importModules ./modules/hardware;
+  };
+
+  catalogPaths = nixpkgs-lib.concatLists (
+    nixpkgs-lib.mapAttrsToList (
+      group: mods: map (name: "/${group}/${name}") (builtins.attrNames mods)
+    ) catalog
+  );
+
+  # Resolves a list of catalog paths ("/services/openssh") into module groups.
+  # Every catalog group is present in the tree, possibly empty, so the tree
+  # shape does not depend on the selection.
+  selectModules =
+    paths:
+    let
+      parse =
+        path:
+        let
+          m = builtins.match "/([^/]+)/([^/]+)" path;
+          group = builtins.elemAt m 0;
+          name = builtins.elemAt m 1;
+        in
+        if m == null || !(catalog ? ${group}) || !(catalog.${group} ? ${name}) then
+          throw "thermos: unknown module '${path}'. Available: ${builtins.concatStringsSep ", " catalogPaths}"
+        else
+          { inherit group name; };
+      picked = map parse paths;
+    in
+    builtins.mapAttrs (group: mods: {
+      modules = nixpkgs-lib.filterAttrs (
+        name: _: builtins.any (p: p.group == group && p.name == name) picked
+      ) mods;
+    }) catalog;
 
   # Makes pkgs and lib available at /nixpkgs
   nixpkgsModule = {
@@ -29,59 +65,63 @@ let
     impl = { options, ... }: options;
   };
 
-  baseModules = {
-    nixpkgs = nixpkgsModule;
-    contracts = {
-      modules = contractModules;
-    };
-    builders = {
-      modules = builderModules;
-    };
-    core = {
-      modules = coreModules;
-    };
-    services = {
-      modules = serviceModules;
-    };
-    middleware = {
-      modules = middlewareModules;
-    };
-  };
-
   /**
     Produces an adios module tree.
 
-    `modules` are merged into the base set before evaluation, letting callers
-    add modules beyond the shipped set. Tests use it to inject a synthetic
+    `modules` selects catalog modules by path. Core, contracts, builders, and
+    middleware are always in the tree; everything else is a module a system
+    drops in. An unknown path throws with the available list.
+
+    `extraModules` is an attrset merged over the group set, letting callers
+    add modules beyond the shipped catalog. Tests use it to inject a synthetic
     publisher and drive subscriber builders through the real contract +
     subscription path. Child modules live under a group `modules` attr, so a
-    test publisher goes at `modules.<group>.modules.<name>`.
+    test publisher goes at `extraModules.<group>.modules.<name>`.
 
     Example
 
     ```nix
     configure {
+      modules = [
+        "/services/openssh"
+        "/hardware/initrd-storage"
+      ];
       options."/core/base".rootHashedPassword = "sha...";
-      modules.tests.modules.foo = extraPublisherModule;
+      extraModules.tests.modules.foo = extraPublisherModule;
     };
     ```
 
     Type
 
-    system :: { options, modules } -> tree
+    system :: { modules, options, extraModules } -> tree
   */
   configure =
     {
+      modules ? [ ],
       options ? { },
-      modules ? { },
+      extraModules ? { },
     }:
     (adios.adios {
       name = "thermos";
-      modules = baseModules // modules;
+      modules = {
+        nixpkgs = nixpkgsModule;
+        contracts = {
+          modules = contractModules;
+        };
+        builders = {
+          modules = builderModules;
+        };
+        core = {
+          modules = coreModules;
+        };
+        middleware = {
+          modules = middlewareModules;
+        };
+      }
+      // selectModules modules
+      // extraModules;
     })
       { inherit options; };
-
-  tree = configure { inherit options; };
 
 in
 {
@@ -89,7 +129,7 @@ in
     nixpkgs-lib
     pkgs
     configure
-    tree
+    catalogPaths
     ;
 
   # The adios, korora type constructors.

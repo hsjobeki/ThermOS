@@ -23,7 +23,7 @@
 
   options = {
     # Minimum to reach a virtio root and keep the NIC across switch_root. Metal
-    # storage breadth comes from /core/initrd-storage at (initrd, available).
+    # storage breadth comes from /hardware/initrd-storage at (initrd, available).
     kernelModules = {
       type = types.any;
       default = [

@@ -64,7 +64,7 @@ let
     in
     map (f: extractMeta (dir + "/${f}")) nixFiles;
 
-  modules = scanDir ../modules/core ++ scanDir ../modules/services;
+  modules = scanDir ../modules/core ++ scanDir ../modules/services ++ scanDir ../modules/hardware;
   middleware = scanDir ../modules/middleware;
   contracts = scanDir ../modules/contracts;
   builders = scanDir ../modules/builders;
