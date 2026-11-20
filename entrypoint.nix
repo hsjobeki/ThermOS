@@ -130,6 +130,7 @@ in
     pkgs
     configure
     catalogPaths
+    catalog
     ;
 
   # The adios, korora type constructors.
