@@ -1,4 +1,4 @@
-{ tree, ... }:
+{ entrypoint, tree, ... }:
 let
   inherit (builtins) attrNames;
 in
@@ -9,6 +9,7 @@ in
       "builders"
       "contracts"
       "core"
+      "hardware"
       "middleware"
       "nixpkgs"
       "services"
@@ -49,15 +50,17 @@ in
 
   testCoreChildren = {
     expr = attrNames tree.modules.core.modules;
-    expected = [
-      "base"
-      "initrd-network"
-      "initrd-storage"
-      "system-input"
-    ];
+    expected = [ "base" ];
   };
 
-  testServiceChildren = {
+  testMiddlewareChildren = {
+    expr = attrNames tree.modules.middleware.modules;
+    expected = [ "pam" ];
+  };
+
+  # entrypoint.configure: membership is the selection. A selected module is in
+  # the tree; an unselected one does not exist.
+  testSelectedServiceChildren = {
     expr = attrNames tree.modules.services.modules;
     expected = [
       "dbus"
@@ -67,8 +70,50 @@ in
     ];
   };
 
-  testMiddlewareChildren = {
-    expr = attrNames tree.modules.middleware.modules;
-    expected = [ "pam" ];
+  testUnselectedGroupIsEmpty = {
+    expr = attrNames tree.modules.hardware.modules;
+    expected = [ ];
+  };
+
+  testHardwareSelection = {
+    expr =
+      let
+        t = entrypoint.configure {
+          modules = [
+            "/hardware/initrd-storage"
+            "/hardware/system-input"
+          ];
+        };
+      in
+      {
+        hardware = attrNames t.modules.hardware.modules;
+        services = attrNames t.modules.services.modules;
+      };
+    expected = {
+      hardware = [
+        "initrd-storage"
+        "system-input"
+      ];
+      services = [ ];
+    };
+  };
+
+  testUnknownModuleThrows = {
+    expr = entrypoint.configure { modules = [ "/services/nope" ]; };
+    expectedError.type = "ThrownError";
+    expectedError.msg = "thermos: unknown module '/services/nope'";
+  };
+
+  testCatalogPaths = {
+    expr = entrypoint.catalogPaths;
+    expected = [
+      "/hardware/initrd-network"
+      "/hardware/initrd-storage"
+      "/hardware/system-input"
+      "/services/dbus"
+      "/services/getty"
+      "/services/networkd"
+      "/services/openssh"
+    ];
   };
 }

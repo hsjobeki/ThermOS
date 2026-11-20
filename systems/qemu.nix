@@ -1,22 +1,25 @@
 let
   thermos = import ../default.nix { };
   system = thermos.configure {
-    options = {
-      "/core/base" = {
-        # Password: thermos
-        rootHashedPassword = "$6$thermos$H0ll22GovTVsmgXyGSxBB1rAwU.QF6D/nFspidCXj0vFJ6YzUUzhs1r8/mEiXnb0IUUP8t2tChAmwA.vEXH9G/";
-      };
+    modules = [
+      "/services/getty"
+      "/services/dbus"
+      "/services/openssh"
+      # QEMU user-mode (SLIRP) runs a built-in DHCP server.
+      "/services/networkd"
       # Force-load af_packet in the initrd (it persists across switch_root) so the
       # AF_PACKET socket family is available to systemd-networkd DHCP client.
       # The kernel ships it as a module (CONFIG_PACKET=m); without this load,
       # socket(AF_PACKET) returns EAFNOSUPPORT and DHCP silently fails. Publishes
       # {af_packet, initrd, force} to /contracts/kernel-modules.
-      "/core/initrd-network" = {
-        enable = true;
+      "/hardware/initrd-network"
+    ];
+    options = {
+      "/core/base" = {
+        # Password: thermos
+        rootHashedPassword = "$6$thermos$H0ll22GovTVsmgXyGSxBB1rAwU.QF6D/nFspidCXj0vFJ6YzUUzhs1r8/mEiXnb0IUUP8t2tChAmwA.vEXH9G/";
       };
-      # QEMU user-mode (SLIRP) runs a built-in DHCP server.
       "/services/networkd" = {
-        enable = true;
         useDHCP = true;
       };
       "/services/getty" = {

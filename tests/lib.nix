@@ -1,4 +1,11 @@
 {
+  # Baseline system for the artifact tests: the interactive service set.
+  baselineModules = [
+    "/services/getty"
+    "/services/dbus"
+    "/services/openssh"
+  ];
+
   /**
     Shareable preamble includes some helper functions for vm tests
 

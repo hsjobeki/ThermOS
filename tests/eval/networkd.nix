@@ -7,9 +7,7 @@ in
   testDhcpNetworkFile = {
     expr =
       let
-        impl = tree.modules.services.modules.networkd {
-          enable = true;
-        };
+        impl = tree.modules.services.modules.networkd { };
         etc = head impl.etc;
       in
       {
@@ -26,7 +24,6 @@ in
     expr =
       let
         impl = tree.modules.services.modules.networkd {
-          enable = true;
           useDHCP = false;
           addresses = [ "192.168.1.2/24" ];
         };
@@ -44,27 +41,10 @@ in
     };
   };
 
-  testDisabledEmpty = {
-    expr =
-      let
-        impl = tree.modules.services.modules.networkd { };
-      in
-      {
-        inherit (impl) etc users groups;
-      };
-    expected = {
-      etc = [ ];
-      users = [ ];
-      groups = [ ];
-    };
-  };
-
   testNetworkUser = {
     expr =
       let
-        impl = tree.modules.services.modules.networkd {
-          enable = true;
-        };
+        impl = tree.modules.services.modules.networkd { };
       in
       (head impl.users).name;
     expected = "systemd-network";
@@ -74,7 +54,6 @@ in
     expr =
       let
         impl = tree.modules.services.modules.networkd {
-          enable = true;
           useDHCP = true;
         };
       in
@@ -86,7 +65,6 @@ in
     expr =
       let
         impl = tree.modules.services.modules.networkd {
-          enable = true;
           useDHCP = false;
           addresses = [ "192.168.1.2/24" ];
         };
@@ -99,7 +77,6 @@ in
     expr =
       let
         impl = tree.modules.services.modules.networkd {
-          enable = true;
           useDHCP = false;
           addresses = [ ];
         };
@@ -108,18 +85,12 @@ in
     expected = false;
   };
 
-  testDisabledNoAssertions = {
-    expr = (tree.modules.services.modules.networkd { }).assertions;
-    expected = [ ];
-  };
-
   testTreeAcceptsDhcp = {
     expr =
       let
         reconfigured = tree.override {
           options = {
             "/services/networkd" = {
-              enable = true;
               useDHCP = true;
             };
           };

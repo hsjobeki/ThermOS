@@ -648,7 +648,7 @@
 </div>
 
 <script id="settings-data" type="application/json">
-{"builders":[{"inputs":[],"name":"etc","options":[],"publish":[],"subscribe":["/contracts/etc"]},{"inputs":["/builders/rootfs"],"name":"image","options":[],"publish":[],"subscribe":[]},{"inputs":[],"name":"initrd","options":[{"default":["virtio_blk","virtio_pci","virtio_net","ext4"],"kind":"any","name":"kernelModules"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"packages","options":[],"publish":[],"subscribe":["/contracts/packages"]},{"inputs":["/builders/toplevel"],"name":"rootfs","options":[],"publish":[],"subscribe":[]},{"inputs":[],"name":"tmpfiles","options":[],"publish":[],"subscribe":["/contracts/tmpfiles"]},{"inputs":["/builders/etc","/builders/packages","/builders/tmpfiles","/builders/units","/builders/users"],"name":"toplevel","options":[],"publish":[],"subscribe":["/contracts/assertions"]},{"inputs":[],"name":"units","options":[],"publish":[],"subscribe":["/contracts/units"]},{"inputs":[],"name":"users","options":[],"publish":[],"subscribe":["/contracts/users","/contracts/groups"]}],"contracts":[{"inputs":[],"name":"assertions","options":[{"kind":"bool","name":"assertion"},{"kind":"str","name":"message"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"etc","options":[{"kind":"str","name":"name"},{"kind":"str","name":"text"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"groups","options":[{"kind":"int","name":"gid"},{"default":[],"elem":"str","kind":"listOf","name":"members"},{"kind":"str","name":"name"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"packages","options":[{"kind":"derivation","name":"package"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"pam","options":[{"kind":"str","name":"name"},{"elem":"struct","kind":"listOf","name":"rules"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"tmpfiles","options":[{"kind":"str","name":"rule"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"units","options":[{"elem":"attrsOf","kind":"attrsOf","name":"unitConfig"},{"kind":"str","name":"unitName"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"users","options":[{"default":"","kind":"str","name":"gecos"},{"kind":"int","name":"gid"},{"default":"!","kind":"str","name":"hashedPassword"},{"default":"/var/empty","kind":"str","name":"home"},{"kind":"str","name":"name"},{"default":"/sbin/nologin","kind":"str","name":"shell"},{"kind":"int","name":"uid"}],"publish":[],"subscribe":[]}],"middleware":[{"inputs":[],"name":"pam","options":[],"publish":["/contracts/etc"],"subscribe":["/contracts/pam"]}],"modules":[{"inputs":[],"name":"base","options":[{"default":"thermos","kind":"str","name":"hostName"},{"default":"!","kind":"str","name":"rootHashedPassword"}],"publish":["/contracts/etc","/contracts/packages","/contracts/tmpfiles","/contracts/users","/contracts/groups","/contracts/pam"],"subscribe":[]},{"inputs":[],"name":"dbus","options":[],"publish":["/contracts/units","/contracts/users","/contracts/groups","/contracts/packages","/contracts/etc","/contracts/tmpfiles"],"subscribe":[]},{"inputs":[],"name":"getty","options":[{"default":"","kind":"str","name":"autologinUser"},{"default":"115200","kind":"str","name":"baudRate"},{"default":[],"elem":"str","kind":"listOf","name":"serialTtys"},{"default":["tty1"],"elem":"str","kind":"listOf","name":"ttys"}],"publish":["/contracts/units"],"subscribe":[]},{"inputs":[],"name":"networkd","options":[{"default":[],"elem":"str","kind":"listOf","name":"addresses"},{"default":false,"kind":"bool","name":"enable"},{"default":true,"kind":"bool","name":"useDHCP"}],"publish":["/contracts/etc","/contracts/users","/contracts/groups","/contracts/assertions"],"subscribe":[]},{"inputs":[],"name":"openssh","options":[{"default":{},"elem":"listOf","kind":"attrsOf","name":"authorizedKeys"},{"default":"prohibit-password","kind":"str","name":"permitRootLogin"},{"default":22,"kind":"int","name":"port"}],"publish":["/contracts/units","/contracts/users","/contracts/groups","/contracts/packages","/contracts/pam","/contracts/etc"],"subscribe":[]}]}
+{"builders":[{"inputs":[],"name":"etc","options":[],"publish":[],"subscribe":["/contracts/etc"]},{"inputs":["/builders/rootfs"],"name":"image","options":[],"publish":[],"subscribe":[]},{"inputs":[],"name":"initrd","options":[{"default":["virtio_blk","virtio_pci","virtio_net","ext4"],"kind":"any","name":"kernelModules"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"packages","options":[],"publish":[],"subscribe":["/contracts/packages"]},{"inputs":["/builders/toplevel"],"name":"rootfs","options":[],"publish":[],"subscribe":[]},{"inputs":[],"name":"tmpfiles","options":[],"publish":[],"subscribe":["/contracts/tmpfiles"]},{"inputs":["/builders/etc","/builders/packages","/builders/tmpfiles","/builders/units","/builders/users"],"name":"toplevel","options":[],"publish":[],"subscribe":["/contracts/assertions"]},{"inputs":[],"name":"units","options":[],"publish":[],"subscribe":["/contracts/units"]},{"inputs":[],"name":"users","options":[],"publish":[],"subscribe":["/contracts/users","/contracts/groups"]}],"contracts":[{"inputs":[],"name":"assertions","options":[{"kind":"bool","name":"assertion"},{"kind":"str","name":"message"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"etc","options":[{"kind":"str","name":"name"},{"kind":"str","name":"text"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"groups","options":[{"kind":"int","name":"gid"},{"default":[],"elem":"str","kind":"listOf","name":"members"},{"kind":"str","name":"name"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"packages","options":[{"kind":"derivation","name":"package"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"pam","options":[{"kind":"str","name":"name"},{"elem":"struct","kind":"listOf","name":"rules"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"tmpfiles","options":[{"kind":"str","name":"rule"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"units","options":[{"elem":"attrsOf","kind":"attrsOf","name":"unitConfig"},{"kind":"str","name":"unitName"}],"publish":[],"subscribe":[]},{"inputs":[],"name":"users","options":[{"default":"","kind":"str","name":"gecos"},{"kind":"int","name":"gid"},{"default":"!","kind":"str","name":"hashedPassword"},{"default":"/var/empty","kind":"str","name":"home"},{"kind":"str","name":"name"},{"default":"/sbin/nologin","kind":"str","name":"shell"},{"kind":"int","name":"uid"}],"publish":[],"subscribe":[]}],"middleware":[{"inputs":[],"name":"pam","options":[],"publish":["/contracts/etc"],"subscribe":["/contracts/pam"]}],"modules":[{"inputs":[],"name":"base","options":[{"default":"thermos","kind":"str","name":"hostName"},{"default":"!","kind":"str","name":"rootHashedPassword"}],"publish":["/contracts/etc","/contracts/packages","/contracts/tmpfiles","/contracts/users","/contracts/groups","/contracts/pam"],"subscribe":[]},{"inputs":[],"name":"dbus","options":[],"publish":["/contracts/units","/contracts/users","/contracts/groups","/contracts/packages","/contracts/etc","/contracts/tmpfiles"],"subscribe":[]},{"inputs":[],"name":"getty","options":[{"default":"","kind":"str","name":"autologinUser"},{"default":"115200","kind":"str","name":"baudRate"},{"default":[],"elem":"str","kind":"listOf","name":"serialTtys"},{"default":["tty1"],"elem":"str","kind":"listOf","name":"ttys"}],"publish":["/contracts/units"],"subscribe":[]},{"inputs":[],"name":"networkd","options":[{"default":[],"elem":"str","kind":"listOf","name":"addresses"},{"default":true,"kind":"bool","name":"useDHCP"}],"publish":["/contracts/etc","/contracts/users","/contracts/groups","/contracts/assertions"],"subscribe":[]},{"inputs":[],"name":"openssh","options":[{"default":{},"elem":"listOf","kind":"attrsOf","name":"authorizedKeys"},{"default":"prohibit-password","kind":"str","name":"permitRootLogin"},{"default":22,"kind":"int","name":"port"}],"publish":["/contracts/units","/contracts/users","/contracts/groups","/contracts/packages","/contracts/pam","/contracts/etc"],"subscribe":[]}]}
 </script>
 
 <script id="activation-model" type="application/json">
@@ -742,16 +742,6 @@
       "affects": ["serial-getty@*.service units"],
       "service": "serial console"
     },
-    "networkd.enable": {
-      "label": "Wired network",
-      "blurb": "Let ThermOS configure the wired connection.",
-      "contracts": ["etc"],
-      "classByContract": { "etc": "restart" },
-      "note": "Turning this on brings up the network service. Starting the service is a restart-class action.",
-      "cite": "systemd-networkd.service(8), systemd 260.1",
-      "affects": ["/etc/systemd/network/", "systemd-networkd.service"],
-      "service": "network"
-    },
     "networkd.useDHCP": {
       "label": "Automatic (DHCP)",
       "blurb": "Get an IP address automatically. Turn off to enter one yourself.",
@@ -823,17 +813,11 @@
   },
   "categories": [
     { "id": "general", "name": "General",       "blurb": "Your computer's name.",        "items": ["base.hostName"] },
-    { "id": "network", "name": "Network",       "blurb": "Wired network connection.",     "items": ["networkd.enable", "networkd.useDHCP", "networkd.addresses"] },
+    { "id": "network", "name": "Network",       "blurb": "Wired network connection.",     "items": ["networkd.useDHCP", "networkd.addresses"] },
     { "id": "sharing", "name": "Remote Login",  "blurb": "Reach this computer over SSH.", "items": ["openssh.port", "openssh.permitRootLogin", "openssh.authorizedKeys"] },
     { "id": "users",   "name": "Users & Login", "blurb": "Accounts and how you sign in.", "items": ["base.rootHashedPassword", "getty.autologinUser", "getty.ttys", "getty.serialTtys", "getty.baudRate"] }
   ],
   "conflicts": [
-    {
-      "key": "networkd.useDHCP",
-      "title": "DHCP is not yet implemented",
-      "message": "networkd asserts dhcp is not yet implemented. Enabling networkd with useDHCP=true fails at eval time. Set a static address and disable DHCP.",
-      "cite": "modules/services/networkd.nix (assertion: !options.useDHCP)"
-    },
     {
       "key": "networkd.addresses",
       "title": "Static addresses required without DHCP",
@@ -1047,13 +1031,8 @@
       return effective(k);
     }
     var out = [];
-    var enabled = eff("networkd.enable") === true;
-    if (enabled) {
-      if (eff("networkd.useDHCP") === true) {
-        out.push(MODEL.conflicts.find(function (c) { return c.key === "networkd.useDHCP"; }));
-      } else if ((eff("networkd.addresses") || []).length === 0) {
-        out.push(MODEL.conflicts.find(function (c) { return c.key === "networkd.addresses"; }));
-      }
+    if (eff("networkd.useDHCP") !== true && (eff("networkd.addresses") || []).length === 0) {
+      out.push(MODEL.conflicts.find(function (c) { return c.key === "networkd.addresses"; }));
     }
     return out.filter(Boolean);
   }

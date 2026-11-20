@@ -3,7 +3,7 @@
 let
   thermos = import ../default.nix { };
   pkgs = thermos.pkgs;
-  tree = thermos.tree;
+  tree = thermos.configure { modules = (import ./lib.nix).baselineModules; };
 
   unitsDrv = (tree.modules.builders.modules.units { }).derivation;
   rootfsDrv = (tree.modules.builders.modules.rootfs { }).derivation;
@@ -22,7 +22,7 @@ let
   # (system, force) + (system, available) publish, mirroring a real service.
   # The records reach the builder through a test publisher in a real tree
   kmTree = thermos.configure {
-    modules.tests.modules.kmPublisher = import ./fixtures/kernel-modules-publisher.nix {
+    extraModules.tests.modules.kmPublisher = import ./fixtures/kernel-modules-publisher.nix {
       inherit types;
     };
     options."/tests/kmPublisher".data = [
@@ -47,10 +47,10 @@ let
   };
   kernelVersion = pkgs.linuxPackages.kernel.modDirVersion;
 
-  # Stage-2 input substrate: drive the real /core/system-input publisher through a
-  # configured tree into the kernel-modules builder.
+  # Stage-2 input substrate: drive the real /hardware/system-input publisher
+  # through a configured tree into the kernel-modules builder.
   inputTree = thermos.configure {
-    options."/core/system-input".enable = true;
+    modules = [ "/hardware/system-input" ];
   };
   inputKmResult = inputTree.modules.builders.modules."kernel-modules" { };
   inputKmClosure = inputKmResult.derivation;
@@ -464,8 +464,8 @@ in
         echo "metal image verified" > $out/result
       '';
 
-  # Unit under test: /core/system-input -> /builders/kernel-modules. Asserts the
-  # enabled input modules land in the stage-2 /lib/modules closure and that only
+  # Unit under test: /hardware/system-input -> /builders/kernel-modules. Asserts the
+  # selected input modules land in the stage-2 /lib/modules closure and that only
   # the force-load names (PS/2 + evdev, no reliable modalias) reach modules-load.d;
   # autoload-only HID names must not.
   systemInputModules = pkgs.runCommand "thermos-test-system-input" { } ''

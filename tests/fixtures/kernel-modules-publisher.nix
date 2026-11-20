@@ -4,7 +4,7 @@
   Publishes to: "/contracts/kernel-modules"
   Data: determined by options.data
 
-  Injected in tests via 'configure { modules.tests.modules.<name> = ...; }'
+  Injected in tests via 'configure { extraModules.tests.modules.<name> = ...; }'
 */
 { types, ... }:
 {
