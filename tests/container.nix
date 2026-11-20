@@ -4,14 +4,7 @@ let
   pkgs = thermos.pkgs;
   thermosLib = import ./lib.nix;
 
-  # Baseline system for the artifact tests: the interactive service set.
-  tree = thermos.configure {
-    modules = [
-      "/services/getty"
-      "/services/dbus"
-      "/services/openssh"
-    ];
-  };
+  tree = thermos.configure { modules = thermosLib.baselineModules; };
 
   unitsDrv = (tree.modules.builders.modules.units { }).derivation;
   usersDrv = (tree.modules.builders.modules.users { }).derivation;
@@ -20,11 +13,7 @@ let
   # PAM test: build a rootfs with a known password
   passwordHash = "\$6\$thermostest\$d8h//689.ccFiiNJKscJ9ght7bWyk0WDVBXEHKrMahTIPHLfsMmKeyGgfClxvbpWsBxd/ydyeBzFVWOCLPEiZ1";
   pamThermosTree = thermos.configure {
-    modules = [
-      "/services/getty"
-      "/services/dbus"
-      "/services/openssh"
-    ];
+    modules = thermosLib.baselineModules;
     options = {
       "/core/base" = {
         rootHashedPassword = passwordHash;
@@ -34,12 +23,9 @@ let
   pamRootfsDrv = (pamThermosTree.modules.builders.modules.rootfs { }).derivation;
 
   # SSH-over-VDE boot artifacts (kernel + systemd initrd + image) for an
-  # SSH-reachable ThermOS; extraModules merges in per-test hardware.
+  # SSH-reachable ThermOS; extraPaths selects per-test catalog modules.
   sshKeys = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
-  sshModules = [
-    "/services/getty"
-    "/services/dbus"
-    "/services/openssh"
+  sshModules = thermosLib.baselineModules ++ [
     "/services/networkd"
     "/hardware/initrd-network"
   ];
@@ -60,10 +46,10 @@ let
     };
   };
   sshArtifacts =
-    extraModules:
+    extraPaths:
     let
       t = thermos.configure {
-        modules = sshModules ++ extraModules;
+        modules = sshModules ++ extraPaths;
         options = sshBaseOptions;
       };
       i = t.modules.builders.modules.initrd { };

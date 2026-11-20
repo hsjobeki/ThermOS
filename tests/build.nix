@@ -3,14 +3,7 @@
 let
   thermos = import ../default.nix { };
   pkgs = thermos.pkgs;
-  # Baseline system for the artifact tests: the interactive service set.
-  tree = thermos.configure {
-    modules = [
-      "/services/getty"
-      "/services/dbus"
-      "/services/openssh"
-    ];
-  };
+  tree = thermos.configure { modules = (import ./lib.nix).baselineModules; };
 
   unitsDrv = (tree.modules.builders.modules.units { }).derivation;
   rootfsDrv = (tree.modules.builders.modules.rootfs { }).derivation;
